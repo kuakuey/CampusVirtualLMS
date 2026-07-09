@@ -16,11 +16,17 @@ Sistema de gestión de aprendizaje (tipo Moodle) desarrollado en **PHP + MySQL +
 
 2. Inicia **Apache** y **MySQL** desde el panel de XAMPP.
 
-3. Importa la base de datos. Desde terminal:
+3. Importa la base de datos. Opciones:
+
+   **Opción A — Página de instalación (recomendado en producción):**
+   1. Configura `config/config.php` con tus credenciales MySQL.
+   2. Abre `http://tudominio.com/install.php` (no requiere login).
+   3. Verifica el estado de conexión y usa **Instalación rápida** o **Actualizar tablas**.
+
+   **Opción B — Desde terminal:**
    ```bash
    /Applications/XAMPP/xamppfiles/bin/mysql -u root < sql/schema.sql
    ```
-   O abre phpMyAdmin → Importar → selecciona `sql/schema.sql`.
 
 4. Si tu MySQL tiene contraseña, edita `config/config.php`:
    ```php
@@ -70,6 +76,18 @@ Sistema de gestión de aprendizaje (tipo Moodle) desarrollado en **PHP + MySQL +
 - Ver calificaciones y anuncios
 - Perfil y cambio de contraseña
 
+## Actualizar estructura
+
+Para agregar cambios a la BD en futuras versiones:
+
+1. Crea un archivo en `sql/migrations/` con numeración secuencial, por ejemplo:
+   ```
+   sql/migrations/003_nueva_funcionalidad.sql
+   ```
+2. Ve a **install.php → Actualizar tablas**.
+
+Las migraciones se registran en la tabla `schema_migrations` y no se ejecutan dos veces.
+
 ## Estructura
 
 ```
@@ -77,8 +95,11 @@ AulaVirtual/
 ├── admin/           # Panel de administración
 ├── assets/          # CSS y JS
 ├── config/          # Configuración y conexión DB
-├── includes/        # Layout y helpers
-├── sql/             # Esquema y datos demo
+├── includes/        # Layout, helpers y DbManager
+├── install.php      # Instalación y estado de BD (sin login)
+├── sql/
+│   ├── migrations/  # Migraciones versionadas
+│   └── schema.sql   # Script completo (CLI)
 ├── uploads/         # Archivos subidos
 ├── login.php
 ├── register.php
