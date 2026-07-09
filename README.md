@@ -9,10 +9,7 @@ Sistema de gestión de aprendizaje (tipo Moodle) desarrollado en **PHP + MySQL +
 
 ## Instalación
 
-1. Asegúrate de que el proyecto esté en:
-   ```
-   /Applications/XAMPP/xamppfiles/htdocs/AulaVirtual
-   ```
+1. Asegúrate de que el proyecto esté en tu servidor web.
 
 2. Inicia **Apache** y **MySQL** desde el panel de XAMPP.
 
@@ -20,24 +17,23 @@ Sistema de gestión de aprendizaje (tipo Moodle) desarrollado en **PHP + MySQL +
 
    **Opción A — Página de instalación (recomendado en producción):**
    1. Configura `config/config.php` con tus credenciales MySQL.
-   2. Abre `http://tudominio.com/install.php` (no requiere login).
+   2. Abre `http://tudominio.com/instalacion.php` (no requiere login).
    3. Verifica el estado de conexión y usa **Instalación rápida** o **Actualizar tablas**.
 
    **Opción B — Desde terminal:**
    ```bash
-   /Applications/XAMPP/xamppfiles/bin/mysql -u root < sql/schema.sql
+   mysql -u root < sql/schema.sql
    ```
 
 4. Si tu MySQL tiene contraseña, edita `config/config.php`:
    ```php
-   define('DB_PASS', 'tu_password');
+   define('BD_CLAVE', 'tu_password');
    ```
 
-5. **Producción:** `APP_URL` se detecta sola según tu dominio. Si usas proxy/CDN, define la variable de entorno:
+5. **Producción:** `URL_APP` se detecta sola según tu dominio. También puedes definir:
    ```bash
-   APP_URL=https://tudominio.com
+   URL_APP=https://tudominio.com
    ```
-   O descomenta y fija la URL manualmente en `config/config.php`.
 
 6. Abre en el navegador:
    ```
@@ -52,64 +48,53 @@ Sistema de gestión de aprendizaje (tipo Moodle) desarrollado en **PHP + MySQL +
 | Docente       | docente@aulavirtual.com     | password123   |
 | Estudiante    | estudiante@aulavirtual.com  | password123   |
 
-## Funcionalidades
+## URLs principales
 
-### Administrador
-- Panel con estadísticas globales
-- Gestión de usuarios (crear, roles, activar/desactivar)
-- Categorías de cursos
-- Cursos, anuncios globales
-
-### Docente
-- Crear y editar cursos
-- Lecciones con contenido HTML y video
-- Tareas con fecha límite y puntaje
-- Calificar entregas con feedback
-- Foro del curso y anuncios
-- Ver / retirar estudiantes
-
-### Estudiante
-- Catálogo e inscripción a cursos
-- Ver lecciones y navegar el contenido
-- Entregar tareas (texto + archivo)
-- Participar en foros
-- Ver calificaciones y anuncios
-- Perfil y cambio de contraseña
+| Página | URL |
+|--------|-----|
+| Instalación | `/instalacion.php` |
+| Iniciar sesión | `/iniciar-sesion.php` |
+| Registro | `/registrarse.php` |
+| Panel | `/panel.php` |
+| Cursos | `/cursos.php` |
+| Curso | `/curso.php?id=1&pestaña=lecciones` |
+| Catálogo | `/catalogo.php` |
+| Perfil | `/perfil.php` |
+| Usuarios (admin) | `/admin/usuarios.php` |
+| Categorías (admin) | `/admin/categorias.php` |
 
 ## Actualizar estructura
 
-Para agregar cambios a la BD en futuras versiones:
-
-1. Crea un archivo en `sql/migrations/` con numeración secuencial, por ejemplo:
-   ```
-   sql/migrations/003_nueva_funcionalidad.sql
-   ```
-2. Ve a **install.php → Actualizar tablas**.
-
-Las migraciones se registran en la tabla `schema_migrations` y no se ejecutan dos veces.
+1. Crea un archivo en `sql/migrations/` con numeración secuencial.
+2. Ve a **instalacion.php → Actualizar tablas**.
 
 ## Estructura
 
 ```
 AulaVirtual/
-├── admin/           # Panel de administración
-├── assets/          # CSS y JS
-├── config/          # Configuración y conexión DB
-├── includes/        # Layout, helpers y DbManager
-├── install.php      # Instalación y estado de BD (sin login)
-├── sql/
-│   ├── migrations/  # Migraciones versionadas
-│   └── schema.sql   # Script completo (CLI)
-├── uploads/         # Archivos subidos
-├── login.php
-├── register.php
-├── dashboard.php
-├── courses.php
-├── course.php       # Vista principal del curso (pestañas)
-├── lesson.php
-├── catalog.php
-├── announcements.php
-└── profile.php
+├── admin/
+│   ├── usuarios.php
+│   └── categorias.php
+├── assets/
+├── config/
+│   ├── config.php
+│   └── base_datos.php
+├── includes/
+│   ├── funciones.php
+│   ├── gestor_bd.php
+│   ├── encabezado.php
+│   └── pie.php
+├── subidas/
+├── sql/migrations/
+├── instalacion.php
+├── iniciar-sesion.php
+├── registrarse.php
+├── panel.php
+├── cursos.php
+├── curso.php
+├── leccion.php
+├── catalogo.php
+└── perfil.php
 ```
 
 ## Tecnologías
@@ -117,4 +102,4 @@ AulaVirtual/
 - PHP 8 (sesiones, PDO, password_hash)
 - MySQL / MariaDB
 - Bootstrap 5.3 + Bootstrap Icons
-- CSRF tokens en formularios
+- Tokens CSRF en formularios

@@ -37,11 +37,6 @@ INSERT IGNORE INTO assignments (course_id, title, description, due_date, max_sco
 (2, 'Problemas de movimiento', 'Calcula velocidad y aceleración en los casos propuestos.', DATE_ADD(NOW(), INTERVAL 10 DAY), 50),
 (4, 'Primer algoritmo', 'Escribe un algoritmo que calcule el promedio de 5 notas.', DATE_ADD(NOW(), INTERVAL 7 DAY), 100);
 
-INSERT IGNORE INTO announcements (course_id, author_id, title, body, is_global) VALUES
-(NULL, 1, 'Bienvenida al Aula Virtual', '¡Bienvenidos a la plataforma AulaVirtual! Explora tus cursos, participa en foros y mantente al día con las tareas.', 1),
-(1, 2, 'Inicio del módulo de ecuaciones', 'Esta semana comenzamos con ecuaciones lineales. Revisen la lección 2 antes de la clase.', 0),
-(4, 4, 'Entorno de práctica', 'Pueden usar cualquier editor de texto para la primera tarea de programación.', 0);
-
 INSERT IGNORE INTO forum_topics (course_id, author_id, title, body) VALUES
 (1, 3, 'Duda sobre fracciones', '¿Cómo se simplifica 24/36 de forma rápida?'),
 (4, 5, 'Recomendaciones de editores', '¿Qué editor recomiendan para empezar a programar?');

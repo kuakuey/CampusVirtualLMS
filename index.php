@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/funciones.php';
 
-if (is_logged_in()) {
-    redirect('dashboard.php');
+if (esta_logueado()) {
+    redirigir('panel.php');
 }
-redirect('login.php');
+redirigir('iniciar-sesion.php');

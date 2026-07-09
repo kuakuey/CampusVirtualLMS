@@ -1,18 +1,18 @@
 <?php
-require_once __DIR__ . '/includes/functions.php';
-require_login();
+require_once __DIR__ . '/includes/funciones.php';
+requiere_sesion();
 
-$user = current_user();
-$pageTitle = 'Mi perfil';
+$usuario = usuario_actual();
+$tituloPagina = 'Mi perfil';
 $errors = [];
 
-$stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
-$stmt->execute([$user['id']]);
+$stmt = bd()->prepare('SELECT * FROM users WHERE id = ?');
+$stmt->execute([$usuario['id']]);
 $profile = $stmt->fetch();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf();
-    $action = $_POST['action'] ?? 'profile';
+    verificar_csrf();
+    $action = $_POST['accion'] ?? 'profile';
 
     if ($action === 'profile') {
         $name = trim($_POST['name'] ?? '');
@@ -20,12 +20,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($name === '') {
             $errors[] = 'El nombre es obligatorio.';
         } else {
-            $stmt = db()->prepare('UPDATE users SET name=?, bio=? WHERE id=?');
-            $stmt->execute([$name, $bio, $user['id']]);
-            $_SESSION['user']['name'] = $name;
-            $_SESSION['user']['bio'] = $bio;
-            flash('success', 'Perfil actualizado.');
-            redirect('profile.php');
+            $stmt = bd()->prepare('UPDATE users SET name=?, bio=? WHERE id=?');
+            $stmt->execute([$name, $bio, $usuario['id']]);
+            $_SESSION['usuario']['name'] = $name;
+            $_SESSION['usuario']['bio'] = $bio;
+            mensaje_flash('success', 'Perfil actualizado.');
+            redirigir('perfil.php');
         }
     }
 
@@ -40,15 +40,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($new !== $confirm) {
             $errors[] = 'La confirmación no coincide.';
         } else {
-            $stmt = db()->prepare('UPDATE users SET password=? WHERE id=?');
-            $stmt->execute([password_hash($new, PASSWORD_DEFAULT), $user['id']]);
-            flash('success', 'Contraseña actualizada.');
-            redirect('profile.php');
+            $stmt = bd()->prepare('UPDATE users SET password=? WHERE id=?');
+            $stmt->execute([password_hash($new, PASSWORD_DEFAULT), $usuario['id']]);
+            mensaje_flash('success', 'Contraseña actualizada.');
+            redirigir('perfil.php');
         }
     }
 }
 
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/encabezado.php';
 ?>
 
 <div class="page-header">
@@ -59,18 +59,18 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <?php if ($errors): ?>
-    <div class="alert alert-danger"><ul class="mb-0 ps-3"><?php foreach ($errors as $err): ?><li><?= e($err) ?></li><?php endforeach; ?></ul></div>
+    <div class="alert alert-danger"><ul class="mb-0 ps-3"><?php foreach ($errors as $err): ?><li><?= escapar($err) ?></li><?php endforeach; ?></ul></div>
 <?php endif; ?>
 
 <div class="row g-4">
     <div class="col-lg-4">
         <div class="panel">
             <div class="panel-body text-center py-4">
-                <div class="user-avatar mx-auto mb-3" style="width:72px;height:72px;font-size:1.4rem;"><?= e(initials($profile['name'])) ?></div>
-                <h2 class="h5 mb-1"><?= e($profile['name']) ?></h2>
-                <div class="mb-2"><?= role_badge($profile['role']) ?></div>
-                <p class="text-muted small mb-0"><?= e($profile['email']) ?></p>
-                <p class="text-muted small">Miembro desde <?= format_date($profile['created_at']) ?></p>
+                <div class="user-avatar mx-auto mb-3" style="width:72px;height:72px;font-size:1.4rem;"><?= escapar(iniciales($profile['name'])) ?></div>
+                <h2 class="h5 mb-1"><?= escapar($profile['name']) ?></h2>
+                <div class="mb-2"><?= insignia_rol($profile['role']) ?></div>
+                <p class="text-muted small mb-0"><?= escapar($profile['email']) ?></p>
+                <p class="text-muted small">Miembro desde <?= formatear_fecha($profile['created_at']) ?></p>
             </div>
         </div>
     </div>
@@ -79,19 +79,19 @@ require_once __DIR__ . '/includes/header.php';
             <div class="panel-header"><h2>Datos personales</h2></div>
             <div class="panel-body">
                 <form method="post">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="profile">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="profile">
                     <div class="mb-3">
                         <label class="form-label">Nombre</label>
-                        <input type="text" name="name" class="form-control" value="<?= e($profile['name']) ?>" required>
+                        <input type="text" name="name" class="form-control" value="<?= escapar($profile['name']) ?>" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Correo</label>
-                        <input type="email" class="form-control" value="<?= e($profile['email']) ?>" disabled>
+                        <input type="email" class="form-control" value="<?= escapar($profile['email']) ?>" disabled>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Biografía</label>
-                        <textarea name="bio" class="form-control" rows="3"><?= e($profile['bio'] ?? '') ?></textarea>
+                        <textarea name="bio" class="form-control" rows="3"><?= escapar($profile['bio'] ?? '') ?></textarea>
                     </div>
                     <button class="btn btn-primary" type="submit">Guardar cambios</button>
                 </form>
@@ -102,8 +102,8 @@ require_once __DIR__ . '/includes/header.php';
             <div class="panel-header"><h2>Cambiar contraseña</h2></div>
             <div class="panel-body">
                 <form method="post">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="password">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="password">
                     <div class="mb-3">
                         <label class="form-label">Contraseña actual</label>
                         <input type="password" name="current_password" class="form-control" required>
@@ -123,4 +123,4 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/includes/pie.php'; ?>

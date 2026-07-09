@@ -2,46 +2,55 @@
 /**
  * AulaVirtual LMS - Configuración
  */
-define('APP_NAME', 'AulaVirtual');
-define('BASE_PATH', dirname(__DIR__));
+define('NOMBRE_APP', 'AulaVirtual');
+define('RUTA_BASE', dirname(__DIR__));
 
-// URL base de la app. Opciones:
-// 1) Variable de entorno APP_URL (recomendado en producción)
-// 2) Detección automática según dominio y ruta
-// 3) Descomenta y define manualmente si lo necesitas:
-// define('APP_URL', 'https://tudominio.com');
-if (!defined('APP_URL')) {
-    $appUrl = getenv('APP_URL') ?: '';
-    if ($appUrl !== '') {
-        define('APP_URL', rtrim($appUrl, '/'));
+if (!defined('URL_APP')) {
+    $urlApp = getenv('URL_APP') ?: getenv('APP_URL') ?: '';
+    if ($urlApp !== '') {
+        define('URL_APP', rtrim($urlApp, '/'));
     } else {
-        $scheme = (
+        $esquema = (
             (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
             || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
             || (!empty($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
         ) ? 'https' : 'http';
 
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $relativePath = '';
+        $rutaRelativa = '';
 
-        $docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
-        $appRoot = realpath(BASE_PATH);
-        if ($docRoot && $appRoot) {
-            $relativePath = str_replace('\\', '/', str_replace($docRoot, '', $appRoot));
+        $raizDocumentos = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
+        $raizApp = realpath(RUTA_BASE);
+        if ($raizDocumentos && $raizApp) {
+            $rutaRelativa = str_replace('\\', '/', str_replace($raizDocumentos, '', $raizApp));
         }
 
-        define('APP_URL', $scheme . '://' . $host . $relativePath);
+        define('URL_APP', $esquema . '://' . $host . $rutaRelativa);
     }
 }
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'iglesiacasadeavi_lms');
-define('DB_USER', 'iglesiacasadeavi_kuakuey');
-define('DB_PASS', 'Superadmin29@!');
-define('DB_CHARSET', 'utf8mb4');
+define('BD_HOST', 'localhost');
+define('BD_NOMBRE', 'iglesiacasadeavi_lms');
+define('BD_USUARIO', 'iglesiacasadeavi_kuakuey');
+define('BD_CLAVE', 'Superadmin29@!');
+define('BD_CHARSET', 'utf8mb4');
 
-define('UPLOAD_PATH', BASE_PATH . '/uploads');
-define('UPLOAD_URL', APP_URL . '/uploads');
+define('RUTA_SUBIDAS', RUTA_BASE . '/subidas');
+define('URL_SUBIDAS', URL_APP . '/subidas');
+
+define('URL_INICIO_SESION', URL_APP . '/iniciar-sesion.php');
+define('URL_REGISTRO', URL_APP . '/registrarse.php');
+define('URL_CERRAR_SESION', URL_APP . '/cerrar-sesion.php');
+define('URL_PANEL', URL_APP . '/panel.php');
+define('URL_CURSOS', URL_APP . '/cursos.php');
+define('URL_CURSO', URL_APP . '/curso.php');
+define('URL_CURSO_FORMULARIO', URL_APP . '/curso-formulario.php');
+define('URL_CATALOGO', URL_APP . '/catalogo.php');
+define('URL_LECCION', URL_APP . '/leccion.php');
+define('URL_PERFIL', URL_APP . '/perfil.php');
+define('URL_INSTALACION', URL_APP . '/instalacion.php');
+define('URL_USUARIOS', URL_APP . '/admin/usuarios.php');
+define('URL_CATEGORIAS', URL_APP . '/admin/categorias.php');
 
 date_default_timezone_set('America/Bogota');
 

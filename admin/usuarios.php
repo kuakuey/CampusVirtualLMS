@@ -1,95 +1,95 @@
 <?php
-require_once __DIR__ . '/../includes/functions.php';
-require_login();
-require_role('admin');
+require_once __DIR__ . '/../includes/funciones.php';
+requiere_sesion();
+requiere_rol('admin');
 
-$pageTitle = 'Usuarios';
-$q = trim($_GET['q'] ?? '');
+$tituloPagina = 'Usuarios';
+$buscar = trim($_GET['buscar'] ?? '');
 $role = $_GET['role'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf();
-    $action = $_POST['action'] ?? '';
+    verificar_csrf();
+    $accion = $_POST['accion'] ?? '';
 
-    if ($action === 'toggle_status') {
-        $uid = (int) ($_POST['user_id'] ?? 0);
-        if ($uid !== (int) current_user()['id']) {
-            $stmt = db()->prepare('UPDATE users SET status = IF(status=1,0,1) WHERE id = ?');
-            $stmt->execute([$uid]);
-            flash('success', 'Estado del usuario actualizado.');
+    if ($accion === 'cambiar_estado') {
+        $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
+        if ($idUsuario !== (int) usuario_actual()['id']) {
+            $consulta = bd()->prepare('UPDATE users SET status = IF(status=1,0,1) WHERE id = ?');
+            $consulta->execute([$idUsuario]);
+            mensaje_flash('success', 'Estado del usuario actualizado.');
         } else {
-            flash('warning', 'No puedes desactivar tu propia cuenta.');
+            mensaje_flash('warning', 'No puedes desactivar tu propia cuenta.');
         }
-        redirect('admin/users.php');
+        redirigir('admin/usuarios.php');
     }
 
-    if ($action === 'change_role') {
-        $uid = (int) ($_POST['user_id'] ?? 0);
-        $newRole = $_POST['new_role'] ?? '';
-        if ($uid !== (int) current_user()['id'] && in_array($newRole, ['admin', 'teacher', 'student'], true)) {
-            $stmt = db()->prepare('UPDATE users SET role = ? WHERE id = ?');
-            $stmt->execute([$newRole, $uid]);
-            flash('success', 'Rol actualizado.');
+    if ($accion === 'cambiar_rol') {
+        $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
+        $nuevoRol = $_POST['nuevo_rol'] ?? '';
+        if ($idUsuario !== (int) usuario_actual()['id'] && in_array($nuevoRol, ['admin', 'teacher', 'student'], true)) {
+            $consulta = bd()->prepare('UPDATE users SET role = ? WHERE id = ?');
+            $consulta->execute([$nuevoRol, $idUsuario]);
+            mensaje_flash('success', 'Rol actualizado.');
         }
-        redirect('admin/users.php');
+        redirigir('admin/usuarios.php');
     }
 
-    if ($action === 'create_user') {
-        $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-        $newRole = $_POST['new_role'] ?? 'student';
-        if ($name && filter_var($email, FILTER_VALIDATE_EMAIL) && strlen($password) >= 6 && in_array($newRole, ['admin', 'teacher', 'student'], true)) {
-            $check = db()->prepare('SELECT id FROM users WHERE email = ?');
-            $check->execute([$email]);
-            if ($check->fetch()) {
-                flash('danger', 'El correo ya existe.');
+    if ($accion === 'crear_usuario') {
+        $nombre = trim($_POST['nombre'] ?? '');
+        $correo = trim($_POST['correo'] ?? '');
+        $clave = $_POST['clave'] ?? '';
+        $nuevoRol = $_POST['nuevo_rol'] ?? 'student';
+        if ($nombre && filter_var($correo, FILTER_VALIDATE_EMAIL) && strlen($clave) >= 6 && in_array($nuevoRol, ['admin', 'teacher', 'student'], true)) {
+            $verificar = bd()->prepare('SELECT id FROM users WHERE email = ?');
+            $verificar->execute([$correo]);
+            if ($verificar->fetch()) {
+                mensaje_flash('danger', 'El correo ya existe.');
             } else {
-                $stmt = db()->prepare('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)');
-                $stmt->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT), $newRole]);
-                flash('success', 'Usuario creado.');
+                $consulta = bd()->prepare('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)');
+                $consulta->execute([$nombre, $correo, password_hash($clave, PASSWORD_DEFAULT), $nuevoRol]);
+                mensaje_flash('success', 'Usuario creado.');
             }
         } else {
-            flash('danger', 'Datos inválidos para crear usuario.');
+            mensaje_flash('danger', 'Datos inválidos para crear usuario.');
         }
-        redirect('admin/users.php');
+        redirigir('admin/usuarios.php');
     }
 
-    if ($action === 'delete_user') {
-        $uid = (int) ($_POST['user_id'] ?? 0);
-        if ($uid !== (int) current_user()['id']) {
-            $stmt = db()->prepare('DELETE FROM users WHERE id = ?');
-            $stmt->execute([$uid]);
-            flash('success', 'Usuario eliminado.');
+    if ($accion === 'eliminar_usuario') {
+        $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
+        if ($idUsuario !== (int) usuario_actual()['id']) {
+            $consulta = bd()->prepare('DELETE FROM users WHERE id = ?');
+            $consulta->execute([$idUsuario]);
+            mensaje_flash('success', 'Usuario eliminado.');
         }
-        redirect('admin/users.php');
+        redirigir('admin/usuarios.php');
     }
 }
 
 $sql = 'SELECT * FROM users WHERE 1=1';
-$params = [];
-if ($q !== '') {
+$parametros = [];
+if ($buscar !== '') {
     $sql .= ' AND (name LIKE ? OR email LIKE ?)';
-    $like = '%' . $q . '%';
-    $params[] = $like;
-    $params[] = $like;
+    $like = '%' . $buscar . '%';
+    $parametros[] = $like;
+    $parametros[] = $like;
 }
 if ($role !== '' && in_array($role, ['admin', 'teacher', 'student'], true)) {
     $sql .= ' AND role = ?';
-    $params[] = $role;
+    $parametros[] = $role;
 }
 $sql .= ' ORDER BY created_at DESC';
-$stmt = db()->prepare($sql);
-$stmt->execute($params);
-$users = $stmt->fetchAll();
+$consulta = bd()->prepare($sql);
+$consulta->execute($parametros);
+$usuarios = $consulta->fetchAll();
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/encabezado.php';
 ?>
 
 <div class="page-header">
     <div>
         <h1>Usuarios</h1>
-        <p class="subtitle"><?= count($users) ?> usuario(s)</p>
+        <p class="subtitle"><?= count($usuarios) ?> usuario(s)</p>
     </div>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
         <i class="bi bi-person-plus me-1"></i> Nuevo usuario
@@ -100,7 +100,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="panel-body">
         <form class="row g-2" method="get">
             <div class="col-md-6">
-                <input type="text" name="q" class="form-control" value="<?= e($q) ?>" placeholder="Buscar por nombre o correo">
+                <input type="text" name="buscar" class="form-control" value="<?= escapar($buscar) ?>" placeholder="Buscar por nombre o correo">
             </div>
             <div class="col-md-4">
                 <select name="role" class="form-select">
@@ -131,26 +131,26 @@ require_once __DIR__ . '/../includes/header.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($users as $u): ?>
+                    <?php foreach ($usuarios as $u): ?>
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <span class="user-avatar" style="width:34px;height:34px;font-size:0.75rem;"><?= e(initials($u['name'])) ?></span>
+                                <span class="user-avatar" style="width:34px;height:34px;font-size:0.75rem;"><?= escapar(iniciales($u['name'])) ?></span>
                                 <div>
-                                    <strong><?= e($u['name']) ?></strong>
-                                    <div class="small text-muted"><?= e($u['email']) ?></div>
+                                    <strong><?= escapar($u['name']) ?></strong>
+                                    <div class="small text-muted"><?= escapar($u['email']) ?></div>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <?php if ((int) $u['id'] === (int) current_user()['id']): ?>
-                                <?= role_badge($u['role']) ?>
+                            <?php if ((int) $u['id'] === (int) usuario_actual()['id']): ?>
+                                <?= insignia_rol($u['role']) ?>
                             <?php else: ?>
                                 <form method="post" class="d-flex gap-1">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="action" value="change_role">
-                                    <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
-                                    <select name="new_role" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <?= campo_csrf() ?>
+                                    <input type="hidden" name="accion" value="cambiar_rol">
+                                    <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
+                                    <select name="nuevo_rol" class="form-select form-select-sm" onchange="this.form.submit()">
                                         <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
                                         <option value="teacher" <?= $u['role'] === 'teacher' ? 'selected' : '' ?>>Docente</option>
                                         <option value="student" <?= $u['role'] === 'student' ? 'selected' : '' ?>>Estudiante</option>
@@ -163,19 +163,19 @@ require_once __DIR__ . '/../includes/header.php';
                                 <?= $u['status'] ? 'Activo' : 'Inactivo' ?>
                             </span>
                         </td>
-                        <td><?= format_date($u['created_at']) ?></td>
+                        <td><?= formatear_fecha($u['created_at']) ?></td>
                         <td class="text-end">
-                            <?php if ((int) $u['id'] !== (int) current_user()['id']): ?>
+                            <?php if ((int) $u['id'] !== (int) usuario_actual()['id']): ?>
                             <form method="post" class="d-inline">
-                                <?= csrf_field() ?>
-                                <input type="hidden" name="action" value="toggle_status">
-                                <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
+                                <?= campo_csrf() ?>
+                                <input type="hidden" name="accion" value="cambiar_estado">
+                                <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
                                 <button class="btn btn-sm btn-outline-secondary" type="submit"><?= $u['status'] ? 'Desactivar' : 'Activar' ?></button>
                             </form>
                             <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar usuario?');">
-                                <?= csrf_field() ?>
-                                <input type="hidden" name="action" value="delete_user">
-                                <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
+                                <?= campo_csrf() ?>
+                                <input type="hidden" name="accion" value="eliminar_usuario">
+                                <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
                                 <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
                             </form>
                             <?php else: ?>
@@ -193,8 +193,8 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="modal fade" id="createUserModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="post" class="modal-content">
-            <?= csrf_field() ?>
-            <input type="hidden" name="action" value="create_user">
+            <?= campo_csrf() ?>
+            <input type="hidden" name="accion" value="crear_usuario">
             <div class="modal-header">
                 <h5 class="modal-title">Nuevo usuario</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -202,19 +202,19 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label">Nombre</label>
-                    <input type="text" name="name" class="form-control" required>
+                    <input type="text" name="nombre" class="form-control" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Correo</label>
-                    <input type="email" name="email" class="form-control" required>
+                    <input type="email" name="correo" class="form-control" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Contraseña</label>
-                    <input type="password" name="password" class="form-control" required minlength="6">
+                    <input type="password" name="clave" class="form-control" required minlength="6">
                 </div>
                 <div class="mb-0">
                     <label class="form-label">Rol</label>
-                    <select name="new_role" class="form-select">
+                    <select name="nuevo_rol" class="form-select">
                         <option value="student">Estudiante</option>
                         <option value="teacher">Docente</option>
                         <option value="admin">Administrador</option>
@@ -229,4 +229,4 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/pie.php'; ?>

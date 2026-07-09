@@ -1,23 +1,23 @@
 <?php
-require_once __DIR__ . '/../includes/functions.php';
-require_login();
-require_role('admin');
+require_once __DIR__ . '/../includes/funciones.php';
+requiere_sesion();
+requiere_rol('admin');
 
-$pageTitle = 'Categorías';
+$tituloPagina = 'Categorías';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf();
-    $action = $_POST['action'] ?? '';
+    verificar_csrf();
+    $action = $_POST['accion'] ?? '';
 
     if ($action === 'create') {
         $name = trim($_POST['name'] ?? '');
         $description = trim($_POST['description'] ?? '');
         if ($name !== '') {
-            $stmt = db()->prepare('INSERT INTO categories (name, description) VALUES (?, ?)');
+            $stmt = bd()->prepare('INSERT INTO categories (name, description) VALUES (?, ?)');
             $stmt->execute([$name, $description]);
-            flash('success', 'Categoría creada.');
+            mensaje_flash('success', 'Categoría creada.');
         }
-        redirect('admin/categories.php');
+        redirigir('admin/categorias.php');
     }
 
     if ($action === 'update') {
@@ -25,28 +25,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim($_POST['name'] ?? '');
         $description = trim($_POST['description'] ?? '');
         if ($cid && $name !== '') {
-            $stmt = db()->prepare('UPDATE categories SET name=?, description=? WHERE id=?');
+            $stmt = bd()->prepare('UPDATE categories SET name=?, description=? WHERE id=?');
             $stmt->execute([$name, $description, $cid]);
-            flash('success', 'Categoría actualizada.');
+            mensaje_flash('success', 'Categoría actualizada.');
         }
-        redirect('admin/categories.php');
+        redirigir('admin/categorias.php');
     }
 
     if ($action === 'delete') {
         $cid = (int) ($_POST['category_id'] ?? 0);
-        $stmt = db()->prepare('DELETE FROM categories WHERE id = ?');
+        $stmt = bd()->prepare('DELETE FROM categories WHERE id = ?');
         $stmt->execute([$cid]);
-        flash('success', 'Categoría eliminada.');
-        redirect('admin/categories.php');
+        mensaje_flash('success', 'Categoría eliminada.');
+        redirigir('admin/categorias.php');
     }
 }
 
-$categories = db()->query(
+$categories = bd()->query(
     'SELECT cat.*, (SELECT COUNT(*) FROM courses c WHERE c.category_id = cat.id) AS courses_count
      FROM categories cat ORDER BY cat.name'
 )->fetchAll();
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/encabezado.php';
 ?>
 
 <div class="page-header">
@@ -62,8 +62,8 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="panel-header"><h2>Nueva categoría</h2></div>
             <div class="panel-body">
                 <form method="post">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="create">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="create">
                     <div class="mb-3">
                         <label class="form-label">Nombre</label>
                         <input type="text" name="name" class="form-control" required>
@@ -94,9 +94,9 @@ require_once __DIR__ . '/../includes/header.php';
                             <?php foreach ($categories as $cat): ?>
                             <tr>
                                 <td>
-                                    <strong><?= e($cat['name']) ?></strong>
+                                    <strong><?= escapar($cat['name']) ?></strong>
                                     <?php if ($cat['description']): ?>
-                                        <div class="small text-muted"><?= e($cat['description']) ?></div>
+                                        <div class="small text-muted"><?= escapar($cat['description']) ?></div>
                                     <?php endif; ?>
                                 </td>
                                 <td><?= (int) $cat['courses_count'] ?></td>
@@ -105,8 +105,8 @@ require_once __DIR__ . '/../includes/header.php';
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                     <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar categoría?');">
-                                        <?= csrf_field() ?>
-                                        <input type="hidden" name="action" value="delete">
+                                        <?= campo_csrf() ?>
+                                        <input type="hidden" name="accion" value="delete">
                                         <input type="hidden" name="category_id" value="<?= (int) $cat['id'] ?>">
                                         <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
                                     </form>
@@ -116,8 +116,8 @@ require_once __DIR__ . '/../includes/header.php';
                             <div class="modal fade" id="edit<?= (int) $cat['id'] ?>" tabindex="-1">
                                 <div class="modal-dialog">
                                     <form method="post" class="modal-content">
-                                        <?= csrf_field() ?>
-                                        <input type="hidden" name="action" value="update">
+                                        <?= campo_csrf() ?>
+                                        <input type="hidden" name="accion" value="update">
                                         <input type="hidden" name="category_id" value="<?= (int) $cat['id'] ?>">
                                         <div class="modal-header">
                                             <h5 class="modal-title">Editar categoría</h5>
@@ -126,11 +126,11 @@ require_once __DIR__ . '/../includes/header.php';
                                         <div class="modal-body">
                                             <div class="mb-3">
                                                 <label class="form-label">Nombre</label>
-                                                <input type="text" name="name" class="form-control" value="<?= e($cat['name']) ?>" required>
+                                                <input type="text" name="name" class="form-control" value="<?= escapar($cat['name']) ?>" required>
                                             </div>
                                             <div class="mb-0">
                                                 <label class="form-label">Descripción</label>
-                                                <textarea name="description" class="form-control" rows="3"><?= e($cat['description'] ?? '') ?></textarea>
+                                                <textarea name="description" class="form-control" rows="3"><?= escapar($cat['description'] ?? '') ?></textarea>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
@@ -149,4 +149,4 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/pie.php'; ?>

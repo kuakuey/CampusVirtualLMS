@@ -1,0 +1,133 @@
+<?php
+require_once __DIR__ . '/includes/funciones.php';
+requiere_sesion();
+requiere_rol(['admin', 'teacher']);
+
+$usuario = usuario_actual();
+$id = (int) ($_GET['id'] ?? 0);
+$curso = $id ? obtener_curso($id) : null;
+$tituloPagina = $curso ? 'Editar curso' : 'Nuevo curso';
+
+if ($curso && $usuario['role'] === 'teacher' && (int) $curso['teacher_id'] !== (int) $usuario['id']) {
+    mensaje_flash('danger', 'No puedes editar este curso.');
+    redirigir('cursos.php');
+}
+
+$categories = bd()->query('SELECT * FROM categories ORDER BY name')->fetchAll();
+$teachers = [];
+if ($usuario['role'] === 'admin') {
+    $teachers = bd()->query('SELECT id, name FROM users WHERE role = "teacher" AND status = 1 ORDER BY name')->fetchAll();
+}
+
+$errors = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verificar_csrf();
+    $title = trim($_POST['title'] ?? '');
+    $code = strtoupper(trim($_POST['code'] ?? ''));
+    $description = trim($_POST['description'] ?? '');
+    $idCategoria = (int) ($_POST['category_id'] ?? 0) ?: null;
+    $estado = $_POST['status'] ?? 'draft';
+    $teacherId = $usuario['role'] === 'admin' ? (int) ($_POST['teacher_id'] ?? 0) : (int) $usuario['id'];
+
+    if ($title === '') $errors[] = 'El título es obligatorio.';
+    if ($code === '') $errors[] = 'El código es obligatorio.';
+    if (!in_array($status, ['draft', 'published', 'archived'], true)) $estado = 'draft';
+    if ($usuario['role'] === 'admin' && $teacherId <= 0) $errors[] = 'Selecciona un docente.';
+
+    if (!$errors) {
+        $check = bd()->prepare('SELECT id FROM courses WHERE code = ? AND id != ?');
+        $check->execute([$code, $id]);
+        if ($check->fetch()) {
+            $errors[] = 'Ese código de curso ya existe.';
+        }
+    }
+
+    if (!$errors) {
+        if ($curso) {
+            $stmt = bd()->prepare('UPDATE courses SET category_id=?, teacher_id=?, title=?, code=?, description=?, status=? WHERE id=?');
+            $stmt->execute([$idCategoria, $teacherId, $title, $code, $description, $status, $id]);
+            mensaje_flash('success', 'Curso actualizado.');
+        } else {
+            $stmt = bd()->prepare('INSERT INTO courses (category_id, teacher_id, title, code, description, status) VALUES (?,?,?,?,?,?)');
+            $stmt->execute([$idCategoria, $teacherId, $title, $code, $description, $status]);
+            $id = (int) bd()->lastInsertId();
+            mensaje_flash('success', 'Curso creado correctamente.');
+        }
+        redirigir('curso.php?id=' . $id);
+    }
+} else {
+    $_POST = $curso ?: [
+        'title' => '', 'code' => '', 'description' => '', 'category_id' => '', 'status' => 'draft', 'teacher_id' => $usuario['id']
+    ];
+}
+
+require_once __DIR__ . '/includes/encabezado.php';
+?>
+
+<div class="page-header">
+    <div>
+        <h1><?= escapar($tituloPagina) ?></h1>
+        <p class="subtitle">Completa la información del curso</p>
+    </div>
+    <a href="<?= URL_APP ?>/cursos.php" class="btn btn-outline-secondary">Volver</a>
+</div>
+
+<div class="panel" style="max-width: 760px;">
+    <div class="panel-body">
+        <?php if ($errors): ?>
+            <div class="alert alert-danger"><ul class="mb-0 ps-3"><?php foreach ($errors as $err): ?><li><?= escapar($err) ?></li><?php endforeach; ?></ul></div>
+        <?php endif; ?>
+        <form method="post">
+            <?= campo_csrf() ?>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label">Título</label>
+                    <input type="text" name="title" class="form-control" value="<?= escapar($_POST['title'] ?? '') ?>" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Código</label>
+                    <input type="text" name="code" class="form-control" value="<?= escapar($_POST['code'] ?? '') ?>" required>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Descripción</label>
+                    <textarea name="description" class="form-control" rows="4"><?= escapar($_POST['description'] ?? '') ?></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Categoría</label>
+                    <select name="category_id" class="form-select">
+                        <option value="">Sin categoría</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?= (int) $cat['id'] ?>" <?= (int) ($_POST['category_id'] ?? 0) === (int) $cat['id'] ? 'selected' : '' ?>><?= escapar($cat['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Estado</label>
+                    <select name="estado" class="form-select">
+                        <?php foreach (['draft' => 'Borrador', 'published' => 'Publicado', 'archived' => 'Archivado'] as $k => $v): ?>
+                            <option value="<?= $k ?>" <?= ($_POST['status'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php if ($usuario['role'] === 'admin'): ?>
+                <div class="col-12">
+                    <label class="form-label">Docente</label>
+                    <select name="teacher_id" class="form-select" required>
+                        <option value="">Seleccionar...</option>
+                        <?php foreach ($teachers as $t): ?>
+                            <option value="<?= (int) $t['id'] ?>" <?= (int) ($_POST['teacher_id'] ?? 0) === (int) $t['id'] ? 'selected' : '' ?>><?= escapar($t['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <a href="<?= URL_APP ?>/cursos.php" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<?php require_once __DIR__ . '/includes/pie.php'; ?>

@@ -1,207 +1,196 @@
 <?php
-require_once __DIR__ . '/includes/functions.php';
-require_login();
+require_once __DIR__ . '/includes/funciones.php';
+requiere_sesion();
 
-$user = current_user();
+$usuario = usuario_actual();
 $id = (int) ($_GET['id'] ?? 0);
-$course = get_course($id);
+$curso = obtener_curso($id);
 
-if (!$course) {
-    flash('danger', 'Curso no encontrado.');
-    redirect('courses.php');
+if (!$curso) {
+    mensaje_flash('danger', 'Curso no encontrado.');
+    redirigir('cursos.php');
 }
 
-$isOwner = $user['role'] === 'admin' || ($user['role'] === 'teacher' && (int) $course['teacher_id'] === (int) $user['id']);
-$enrolled = is_enrolled($id);
+$esPropietario = $usuario['role'] === 'admin' || ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']);
+$matriculado = esta_matriculado($id);
 
-if (!$isOwner && !$enrolled && $user['role'] !== 'admin') {
-    if ($course['status'] === 'published' && $user['role'] === 'student') {
-        flash('warning', 'Debes inscribirte para acceder al curso.');
-        redirect('catalog.php');
+if (!$esPropietario && !$matriculado && $usuario['role'] !== 'admin') {
+    if ($curso['status'] === 'published' && $usuario['role'] === 'student') {
+        mensaje_flash('warning', 'Debes inscribirte para acceder al curso.');
+        redirigir('catalogo.php');
     }
-    flash('danger', 'No tienes acceso a este curso.');
-    redirect('courses.php');
+    mensaje_flash('danger', 'No tienes acceso a este curso.');
+    redirigir('cursos.php');
 }
 
-$tab = $_GET['tab'] ?? 'lessons';
-$allowedTabs = ['lessons', 'assignments', 'forum', 'students', 'announcements'];
-if (!in_array($tab, $allowedTabs, true)) {
-    $tab = 'lessons';
+$pestaña = $_GET['pestaña'] ?? 'lecciones';
+$pestañasPermitidas = ['lecciones', 'tareas', 'foro', 'estudiantes'];
+if (!in_array($pestaña, $pestañasPermitidas, true)) {
+    $pestaña = 'lecciones';
 }
-if ($tab === 'students' && !$isOwner) {
-    $tab = 'lessons';
+if ($pestaña === 'estudiantes' && !$esPropietario) {
+    $pestaña = 'lecciones';
 }
 
 // --- Acciones POST ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf();
-    $action = $_POST['action'] ?? '';
+    verificar_csrf();
+    $accion = $_POST['accion'] ?? '';
 
-    if ($action === 'add_lesson' && $isOwner) {
+    if ($accion === 'agregar_leccion' && $esPropietario) {
         $title = trim($_POST['title'] ?? '');
         $content = trim($_POST['content'] ?? '');
         $video = trim($_POST['video_url'] ?? '');
         $order = (int) ($_POST['sort_order'] ?? 0);
         if ($title !== '') {
-            $stmt = db()->prepare('INSERT INTO lessons (course_id, title, content, video_url, sort_order) VALUES (?,?,?,?,?)');
+            $stmt = bd()->prepare('INSERT INTO lessons (course_id, title, content, video_url, sort_order) VALUES (?,?,?,?,?)');
             $stmt->execute([$id, $title, $content, $video ?: null, $order]);
-            flash('success', 'Lección creada.');
+            mensaje_flash('success', 'Lección creada.');
         }
-        redirect("course.php?id=$id&tab=lessons");
+        redirigir("curso.php?id=$id&pestaña=lecciones");
     }
 
-    if ($action === 'delete_lesson' && $isOwner) {
+    if ($accion === 'eliminar_leccion' && $esPropietario) {
         $lessonId = (int) ($_POST['lesson_id'] ?? 0);
-        $stmt = db()->prepare('DELETE FROM lessons WHERE id = ? AND course_id = ?');
+        $stmt = bd()->prepare('DELETE FROM lessons WHERE id = ? AND course_id = ?');
         $stmt->execute([$lessonId, $id]);
-        flash('success', 'Lección eliminada.');
-        redirect("course.php?id=$id&tab=lessons");
+        mensaje_flash('success', 'Lección eliminada.');
+        redirigir("curso.php?id=$id&pestaña=lecciones");
     }
 
-    if ($action === 'add_assignment' && $isOwner) {
+    if ($accion === 'agregar_tarea' && $esPropietario) {
         $title = trim($_POST['title'] ?? '');
         $description = trim($_POST['description'] ?? '');
         $due = $_POST['due_date'] ?? null;
         $max = (float) ($_POST['max_score'] ?? 100);
         if ($title !== '') {
             $due = $due ? date('Y-m-d H:i:s', strtotime($due)) : null;
-            $stmt = db()->prepare('INSERT INTO assignments (course_id, title, description, due_date, max_score) VALUES (?,?,?,?,?)');
+            $stmt = bd()->prepare('INSERT INTO assignments (course_id, title, description, due_date, max_score) VALUES (?,?,?,?,?)');
             $stmt->execute([$id, $title, $description, $due, $max]);
-            flash('success', 'Tarea creada.');
+            mensaje_flash('success', 'Tarea creada.');
         }
-        redirect("course.php?id=$id&tab=assignments");
+        redirigir("curso.php?id=$id&pestaña=tareas");
     }
 
-    if ($action === 'delete_assignment' && $isOwner) {
+    if ($accion === 'eliminar_tarea' && $esPropietario) {
         $aid = (int) ($_POST['assignment_id'] ?? 0);
-        $stmt = db()->prepare('DELETE FROM assignments WHERE id = ? AND course_id = ?');
+        $stmt = bd()->prepare('DELETE FROM assignments WHERE id = ? AND course_id = ?');
         $stmt->execute([$aid, $id]);
-        flash('success', 'Tarea eliminada.');
-        redirect("course.php?id=$id&tab=assignments");
+        mensaje_flash('success', 'Tarea eliminada.');
+        redirigir("curso.php?id=$id&pestaña=tareas");
     }
 
-    if ($action === 'submit_assignment' && $enrolled) {
+    if ($accion === 'entregar_tarea' && $matriculado) {
         $aid = (int) ($_POST['assignment_id'] ?? 0);
         $content = trim($_POST['content'] ?? '');
-        $check = db()->prepare('SELECT id FROM assignments WHERE id = ? AND course_id = ?');
+        $check = bd()->prepare('SELECT id FROM assignments WHERE id = ? AND course_id = ?');
         $check->execute([$aid, $id]);
         if ($check->fetch()) {
             $filePath = null;
             if (!empty($_FILES['file']['name'])) {
-                $filePath = upload_file($_FILES['file'], 'submissions');
+                $filePath = subir_archivo($_FILES['file'], 'entregas');
             }
-            $exists = db()->prepare('SELECT id FROM submissions WHERE assignment_id = ? AND student_id = ?');
-            $exists->execute([$aid, $user['id']]);
+            $exists = bd()->prepare('SELECT id FROM submissions WHERE assignment_id = ? AND student_id = ?');
+            $exists->execute([$aid, $usuario['id']]);
             if ($row = $exists->fetch()) {
-                $stmt = db()->prepare('UPDATE submissions SET content=?, file_path=COALESCE(?, file_path), submitted_at=NOW() WHERE id=?');
+                $stmt = bd()->prepare('UPDATE submissions SET content=?, file_path=COALESCE(?, file_path), submitted_at=NOW() WHERE id=?');
                 $stmt->execute([$content, $filePath, $row['id']]);
             } else {
-                $stmt = db()->prepare('INSERT INTO submissions (assignment_id, student_id, content, file_path) VALUES (?,?,?,?)');
-                $stmt->execute([$aid, $user['id'], $content, $filePath]);
+                $stmt = bd()->prepare('INSERT INTO submissions (assignment_id, student_id, content, file_path) VALUES (?,?,?,?)');
+                $stmt->execute([$aid, $usuario['id'], $content, $filePath]);
             }
-            flash('success', 'Entrega enviada.');
+            mensaje_flash('success', 'Entrega enviada.');
         }
-        redirect("course.php?id=$id&tab=assignments");
+        redirigir("curso.php?id=$id&pestaña=tareas");
     }
 
-    if ($action === 'grade_submission' && $isOwner) {
+    if ($accion === 'calificar_entrega' && $esPropietario) {
         $sid = (int) ($_POST['submission_id'] ?? 0);
         $score = (float) ($_POST['score'] ?? 0);
         $feedback = trim($_POST['feedback'] ?? '');
-        $check = db()->prepare(
+        $check = bd()->prepare(
             'SELECT s.id FROM submissions s JOIN assignments a ON a.id = s.assignment_id WHERE s.id = ? AND a.course_id = ?'
         );
         $check->execute([$sid, $id]);
         if ($check->fetch()) {
-            $exists = db()->prepare('SELECT id FROM grades WHERE submission_id = ?');
+            $exists = bd()->prepare('SELECT id FROM grades WHERE submission_id = ?');
             $exists->execute([$sid]);
             if ($g = $exists->fetch()) {
-                $stmt = db()->prepare('UPDATE grades SET score=?, feedback=?, graded_by=?, graded_at=NOW() WHERE id=?');
-                $stmt->execute([$score, $feedback, $user['id'], $g['id']]);
+                $stmt = bd()->prepare('UPDATE grades SET score=?, feedback=?, graded_by=?, graded_at=NOW() WHERE id=?');
+                $stmt->execute([$score, $feedback, $usuario['id'], $g['id']]);
             } else {
-                $stmt = db()->prepare('INSERT INTO grades (submission_id, score, feedback, graded_by) VALUES (?,?,?,?)');
-                $stmt->execute([$sid, $score, $feedback, $user['id']]);
+                $stmt = bd()->prepare('INSERT INTO grades (submission_id, score, feedback, graded_by) VALUES (?,?,?,?)');
+                $stmt->execute([$sid, $score, $feedback, $usuario['id']]);
             }
-            flash('success', 'Calificación guardada.');
+            mensaje_flash('success', 'Calificación guardada.');
         }
-        redirect("course.php?id=$id&tab=assignments");
+        redirigir("curso.php?id=$id&pestaña=tareas");
     }
 
-    if ($action === 'add_topic' && ($isOwner || $enrolled)) {
+    if ($accion === 'agregar_tema' && ($esPropietario || $matriculado)) {
         $title = trim($_POST['title'] ?? '');
         $body = trim($_POST['body'] ?? '');
         if ($title !== '' && $body !== '') {
-            $stmt = db()->prepare('INSERT INTO forum_topics (course_id, author_id, title, body) VALUES (?,?,?,?)');
-            $stmt->execute([$id, $user['id'], $title, $body]);
-            flash('success', 'Tema publicado.');
+            $stmt = bd()->prepare('INSERT INTO forum_topics (course_id, author_id, title, body) VALUES (?,?,?,?)');
+            $stmt->execute([$id, $usuario['id'], $title, $body]);
+            mensaje_flash('success', 'Tema publicado.');
         }
-        redirect("course.php?id=$id&tab=forum");
+        redirigir("curso.php?id=$id&pestaña=foro");
     }
 
-    if ($action === 'add_reply' && ($isOwner || $enrolled)) {
-        $topicId = (int) ($_POST['topic_id'] ?? 0);
+    if ($accion === 'agregar_respuesta' && ($esPropietario || $matriculado)) {
+        $idTema = (int) ($_POST['topic_id'] ?? 0);
         $body = trim($_POST['body'] ?? '');
-        $check = db()->prepare('SELECT id FROM forum_topics WHERE id = ? AND course_id = ?');
-        $check->execute([$topicId, $id]);
+        $check = bd()->prepare('SELECT id FROM forum_topics WHERE id = ? AND course_id = ?');
+        $check->execute([$idTema, $id]);
         if ($check->fetch() && $body !== '') {
-            $stmt = db()->prepare('INSERT INTO forum_replies (topic_id, author_id, body) VALUES (?,?,?)');
-            $stmt->execute([$topicId, $user['id'], $body]);
-            flash('success', 'Respuesta publicada.');
+            $stmt = bd()->prepare('INSERT INTO forum_replies (topic_id, author_id, body) VALUES (?,?,?)');
+            $stmt->execute([$idTema, $usuario['id'], $body]);
+            mensaje_flash('success', 'Respuesta publicada.');
         }
-        redirect("course.php?id=$id&tab=forum&topic=$topicId");
+        redirigir("curso.php?id=$id&pestaña=foro&tema=$idTema");
     }
 
-    if ($action === 'add_announcement' && $isOwner) {
-        $title = trim($_POST['title'] ?? '');
-        $body = trim($_POST['body'] ?? '');
-        if ($title !== '' && $body !== '') {
-            $stmt = db()->prepare('INSERT INTO announcements (course_id, author_id, title, body, is_global) VALUES (?,?,?,?,0)');
-            $stmt->execute([$id, $user['id'], $title, $body]);
-            flash('success', 'Anuncio publicado.');
-        }
-        redirect("course.php?id=$id&tab=announcements");
+    if ($accion === 'retirar_estudiante' && $esPropietario) {
+        $idEstudiante = (int) ($_POST['id_estudiante'] ?? 0);
+        $consulta = bd()->prepare('UPDATE enrollments SET status = "dropped" WHERE course_id = ? AND student_id = ?');
+        $consulta->execute([$id, $idEstudiante]);
+        mensaje_flash('success', 'Estudiante retirado del curso.');
+        redirigir("curso.php?id=$id&pestaña=estudiantes");
     }
 
-    if ($action === 'unenroll_student' && $isOwner) {
-        $studentId = (int) ($_POST['student_id'] ?? 0);
-        $stmt = db()->prepare('UPDATE enrollments SET status = "dropped" WHERE course_id = ? AND student_id = ?');
-        $stmt->execute([$id, $studentId]);
-        flash('success', 'Estudiante retirado del curso.');
-        redirect("course.php?id=$id&tab=students");
-    }
-
-    if ($action === 'delete_course' && $isOwner) {
-        $stmt = db()->prepare('DELETE FROM courses WHERE id = ?');
+    if ($accion === 'eliminar_curso' && $esPropietario) {
+        $stmt = bd()->prepare('DELETE FROM courses WHERE id = ?');
         $stmt->execute([$id]);
-        flash('success', 'Curso eliminado.');
-        redirect('courses.php');
+        mensaje_flash('success', 'Curso eliminado.');
+        redirigir('cursos.php');
     }
 }
 
 // --- Datos por pestaña ---
-$lessons = db()->prepare('SELECT * FROM lessons WHERE course_id = ? ORDER BY sort_order, id');
-$lessons->execute([$id]);
-$lessons = $lessons->fetchAll();
+$lecciones = bd()->prepare('SELECT * FROM lessons WHERE course_id = ? ORDER BY sort_order, id');
+$lecciones->execute([$id]);
+$lecciones = $lecciones->fetchAll();
 
-$assignments = db()->prepare('SELECT * FROM assignments WHERE course_id = ? ORDER BY due_date IS NULL, due_date, id');
-$assignments->execute([$id]);
-$assignments = $assignments->fetchAll();
+$tareas = bd()->prepare('SELECT * FROM assignments WHERE course_id = ? ORDER BY due_date IS NULL, due_date, id');
+$tareas->execute([$id]);
+$tareas = $tareas->fetchAll();
 
 $mySubmissions = [];
 $allSubmissions = [];
-if ($user['role'] === 'student') {
-    $stmt = db()->prepare(
+if ($usuario['role'] === 'student') {
+    $stmt = bd()->prepare(
         'SELECT s.*, g.score, g.feedback FROM submissions s
          LEFT JOIN grades g ON g.submission_id = s.id
          WHERE s.student_id = ? AND s.assignment_id IN (SELECT id FROM assignments WHERE course_id = ?)'
     );
-    $stmt->execute([$user['id'], $id]);
+    $stmt->execute([$usuario['id'], $id]);
     foreach ($stmt->fetchAll() as $row) {
         $mySubmissions[(int) $row['assignment_id']] = $row;
     }
 }
-if ($isOwner) {
-    $stmt = db()->prepare(
+if ($esPropietario) {
+    $stmt = bd()->prepare(
         'SELECT s.*, u.name AS student_name, a.title AS assignment_title, a.max_score, g.score, g.feedback, g.id AS grade_id
          FROM submissions s
          JOIN users u ON u.id = s.student_id
@@ -214,7 +203,7 @@ if ($isOwner) {
     $allSubmissions = $stmt->fetchAll();
 }
 
-$topics = db()->prepare(
+$topics = bd()->prepare(
     'SELECT t.*, u.name AS author_name,
             (SELECT COUNT(*) FROM forum_replies r WHERE r.topic_id = t.id) AS replies
      FROM forum_topics t
@@ -225,118 +214,109 @@ $topics = db()->prepare(
 $topics->execute([$id]);
 $topics = $topics->fetchAll();
 
-$topicId = (int) ($_GET['topic'] ?? 0);
+$idTema = (int) ($_GET['tema'] ?? 0);
 $currentTopic = null;
 $replies = [];
-if ($topicId) {
-    $stmt = db()->prepare(
+if ($idTema) {
+    $stmt = bd()->prepare(
         'SELECT t.*, u.name AS author_name FROM forum_topics t JOIN users u ON u.id = t.author_id WHERE t.id = ? AND t.course_id = ?'
     );
-    $stmt->execute([$topicId, $id]);
+    $stmt->execute([$idTema, $id]);
     $currentTopic = $stmt->fetch() ?: null;
     if ($currentTopic) {
-        $stmt = db()->prepare(
+        $stmt = bd()->prepare(
             'SELECT r.*, u.name AS author_name, u.role AS author_role
              FROM forum_replies r JOIN users u ON u.id = r.author_id
              WHERE r.topic_id = ? ORDER BY r.created_at'
         );
-        $stmt->execute([$topicId]);
+        $stmt->execute([$idTema]);
         $replies = $stmt->fetchAll();
     }
 }
 
-$students = [];
-if ($isOwner) {
-    $stmt = db()->prepare(
+$estudiantes = [];
+if ($esPropietario) {
+    $stmt = bd()->prepare(
         'SELECT e.*, u.name, u.email FROM enrollments e
          JOIN users u ON u.id = e.student_id
          WHERE e.course_id = ? ORDER BY e.enrolled_at DESC'
     );
     $stmt->execute([$id]);
-    $students = $stmt->fetchAll();
+    $estudiantes = $stmt->fetchAll();
 }
 
-$courseAnnouncements = db()->prepare(
-    'SELECT a.*, u.name AS author_name FROM announcements a
-     JOIN users u ON u.id = a.author_id
-     WHERE a.course_id = ? ORDER BY a.created_at DESC'
-);
-$courseAnnouncements->execute([$id]);
-$courseAnnouncements = $courseAnnouncements->fetchAll();
-
-$pageTitle = $course['title'];
-require_once __DIR__ . '/includes/header.php';
+$tituloPagina = $curso['title'];
+require_once __DIR__ . '/includes/encabezado.php';
 ?>
 
 <div class="page-header">
     <div>
         <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-            <span class="badge text-bg-light border"><?= e($course['code']) ?></span>
-            <?= status_badge($course['status']) ?>
-            <?php if ($course['category_name']): ?><span class="badge bg-secondary"><?= e($course['category_name']) ?></span><?php endif; ?>
+            <span class="badge text-bg-light border"><?= escapar($curso['code']) ?></span>
+            <?= insignia_estado($curso['status']) ?>
+            <?php if ($curso['category_name']): ?><span class="badge bg-secondary"><?= escapar($curso['category_name']) ?></span><?php endif; ?>
         </div>
-        <h1><?= e($course['title']) ?></h1>
-        <p class="subtitle mb-0">Docente: <?= e($course['teacher_name']) ?></p>
+        <h1><?= escapar($curso['title']) ?></h1>
+        <p class="subtitle mb-0">Docente: <?= escapar($curso['teacher_name']) ?></p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <?php if ($isOwner): ?>
-            <a href="<?= APP_URL ?>/course_form.php?id=<?= $id ?>" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
+        <?php if ($esPropietario): ?>
+            <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= $id ?>" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
             <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este curso y todo su contenido?');">
-                <?= csrf_field() ?>
-                <input type="hidden" name="action" value="delete_course">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="accion" value="delete_course">
                 <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
             </form>
         <?php endif; ?>
-        <a href="<?= APP_URL ?>/courses.php" class="btn btn-outline-secondary">Volver</a>
+        <a href="<?= URL_APP ?>/cursos.php" class="btn btn-outline-secondary">Volver</a>
     </div>
 </div>
 
-<?php if ($course['description']): ?>
-<div class="panel mb-4"><div class="panel-body"><?= nl2br(e($course['description'])) ?></div></div>
+<?php if ($curso['description']): ?>
+<div class="panel mb-4"><div class="panel-body"><?= nl2br(escapar($curso['description'])) ?></div></div>
 <?php endif; ?>
 
 <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
     <?php
-    $tabs = [
-        'lessons' => ['Lecciones', 'bi-book'],
-        'assignments' => ['Tareas', 'bi-clipboard-check'],
-        'forum' => ['Foro', 'bi-chat-dots'],
-        'announcements' => ['Anuncios', 'bi-megaphone'],
+    $pestañas = [
+        'lecciones' => ['Lecciones', 'bi-book'],
+        'tareas' => ['Tareas', 'bi-clipboard-check'],
+        'foro' => ['Foro', 'bi-chat-dots'],
     ];
-    if ($isOwner) {
-        $tabs['students'] = ['Estudiantes', 'bi-people'];
+    if ($esPropietario) {
+        $pestañas['estudiantes'] = ['Estudiantes', 'bi-people'];
     }
-    foreach ($tabs as $key => [$label, $icon]):
+    foreach ($pestañas as $key => [$label, $icon]):
     ?>
     <li class="nav-item">
-        <a class="nav-link <?= $tab === $key ? 'active' : '' ?>" href="?id=<?= $id ?>&tab=<?= $key ?>">
+        <a class="nav-link <?= $pestaña === $key ? 'active' : '' ?>" href="?id=<?= $id ?>&pestaña=<?= $key ?>">
             <i class="bi <?= $icon ?> me-1"></i><?= $label ?>
         </a>
     </li>
     <?php endforeach; ?>
 </ul>
 
-<?php if ($tab === 'lessons'): ?>
+<?php if ($pestaña === 'lecciones'): ?>
 <div class="row g-4">
-    <div class="col-lg-<?= $isOwner ? '7' : '12' ?>">
+    <div class="col-lg-<?= $esPropietario ? '7' : '12' ?>">
         <div class="panel">
             <div class="panel-header"><h2>Contenido del curso</h2></div>
             <div class="panel-body">
-                <?php if (!$lessons): ?>
+                <?php if (!$lecciones): ?>
                     <div class="empty-state"><i class="bi bi-journal"></i><p class="mb-0">Aún no hay lecciones.</p></div>
                 <?php else: ?>
-                    <?php foreach ($lessons as $i => $lesson): ?>
+                    <?php foreach ($lecciones as $i => $lesson): ?>
                         <div class="lesson-item">
                             <div>
                                 <span class="badge bg-light text-dark border me-2"><?= $i + 1 ?></span>
-                                <strong><?= e($lesson['title']) ?></strong>
+                                <strong><?= escapar($lesson['title']) ?></strong>
                             </div>
                             <div class="d-flex gap-2">
-                                <a href="<?= APP_URL ?>/lesson.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-primary">Ver</a>
-                                <?php if ($isOwner): ?>
+                                <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-primary">Ver</a>
+                                <?php if ($esPropietario): ?>
                                 <form method="post" onsubmit="return confirm('¿Eliminar lección?');">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="action" value="delete_lesson">
+                                    <?= campo_csrf() ?>
+                                    <input type="hidden" name="accion" value="delete_lesson">
                                     <input type="hidden" name="lesson_id" value="<?= (int) $lesson['id'] ?>">
                                     <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -348,14 +328,14 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </div>
     </div>
-    <?php if ($isOwner): ?>
+    <?php if ($esPropietario): ?>
     <div class="col-lg-5">
         <div class="panel">
             <div class="panel-header"><h2>Nueva lección</h2></div>
             <div class="panel-body">
                 <form method="post">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="add_lesson">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="add_lesson">
                     <div class="mb-3">
                         <label class="form-label">Título</label>
                         <input type="text" name="title" class="form-control" required>
@@ -370,7 +350,7 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Orden</label>
-                        <input type="number" name="sort_order" class="form-control" value="<?= count($lessons) + 1 ?>">
+                        <input type="number" name="sort_order" class="form-control" value="<?= count($lecciones) + 1 ?>">
                     </div>
                     <button class="btn btn-primary w-100" type="submit">Agregar lección</button>
                 </form>
@@ -380,30 +360,30 @@ require_once __DIR__ . '/includes/header.php';
     <?php endif; ?>
 </div>
 
-<?php elseif ($tab === 'assignments'): ?>
+<?php elseif ($pestaña === 'tareas'): ?>
 <div class="row g-4">
-    <div class="col-lg-<?= $isOwner ? '7' : '12' ?>">
+    <div class="col-lg-<?= $esPropietario ? '7' : '12' ?>">
         <div class="panel mb-4">
             <div class="panel-header"><h2>Tareas</h2></div>
             <div class="panel-body">
-                <?php if (!$assignments): ?>
+                <?php if (!$tareas): ?>
                     <div class="empty-state"><i class="bi bi-clipboard"></i><p class="mb-0">No hay tareas.</p></div>
                 <?php else: ?>
-                    <?php foreach ($assignments as $asg): ?>
+                    <?php foreach ($tareas as $asg): ?>
                         <?php $sub = $mySubmissions[(int) $asg['id']] ?? null; ?>
                         <div class="assignment-item flex-column align-items-stretch">
                             <div class="d-flex justify-content-between gap-2 flex-wrap">
                                 <div>
-                                    <strong><?= e($asg['title']) ?></strong>
+                                    <strong><?= escapar($asg['title']) ?></strong>
                                     <div class="small text-muted">
                                         Máx. <?= number_format((float) $asg['max_score'], 0) ?> pts
-                                        <?php if ($asg['due_date']): ?> · Vence <?= format_date($asg['due_date'], true) ?><?php endif; ?>
+                                        <?php if ($asg['due_date']): ?> · Vence <?= formatear_fecha($asg['due_date'], true) ?><?php endif; ?>
                                     </div>
                                 </div>
-                                <?php if ($isOwner): ?>
+                                <?php if ($esPropietario): ?>
                                 <form method="post" onsubmit="return confirm('¿Eliminar tarea?');">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="action" value="delete_assignment">
+                                    <?= campo_csrf() ?>
+                                    <input type="hidden" name="accion" value="delete_assignment">
                                     <input type="hidden" name="assignment_id" value="<?= (int) $asg['id'] ?>">
                                     <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -413,25 +393,25 @@ require_once __DIR__ . '/includes/header.php';
                                     </span>
                                 <?php endif; ?>
                             </div>
-                            <?php if ($asg['description']): ?><p class="small mb-2 mt-2"><?= nl2br(e($asg['description'])) ?></p><?php endif; ?>
+                            <?php if ($asg['description']): ?><p class="small mb-2 mt-2"><?= nl2br(escapar($asg['description'])) ?></p><?php endif; ?>
 
-                            <?php if ($enrolled && !$isOwner): ?>
+                            <?php if ($matriculado && !$esPropietario): ?>
                                 <?php if ($sub && isset($sub['feedback']) && $sub['feedback']): ?>
-                                    <div class="alert alert-info py-2 small mb-2">Feedback: <?= e($sub['feedback']) ?></div>
+                                    <div class="alert alert-info py-2 small mb-2">Feedback: <?= escapar($sub['feedback']) ?></div>
                                 <?php endif; ?>
                                 <form method="post" enctype="multipart/form-data" class="border-top pt-3 mt-1">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="action" value="submit_assignment">
+                                    <?= campo_csrf() ?>
+                                    <input type="hidden" name="accion" value="submit_assignment">
                                     <input type="hidden" name="assignment_id" value="<?= (int) $asg['id'] ?>">
                                     <div class="mb-2">
                                         <label class="form-label small">Tu respuesta</label>
-                                        <textarea name="content" class="form-control form-control-sm" rows="3"><?= e($sub['content'] ?? '') ?></textarea>
+                                        <textarea name="content" class="form-control form-control-sm" rows="3"><?= escapar($sub['content'] ?? '') ?></textarea>
                                     </div>
                                     <div class="mb-2">
                                         <label class="form-label small">Archivo (opcional)</label>
                                         <input type="file" name="file" class="form-control form-control-sm">
                                         <?php if (!empty($sub['file_path'])): ?>
-                                            <small class="text-muted">Archivo actual: <a href="<?= APP_URL ?>/uploads/<?= e($sub['file_path']) ?>" target="_blank">Descargar</a></small>
+                                            <small class="text-muted">Archivo actual: <a href="<?= URL_APP ?>/subidas/<?= escapar($sub['file_path']) ?>" target="_blank">Descargar</a></small>
                                         <?php endif; ?>
                                     </div>
                                     <button class="btn btn-sm btn-primary" type="submit"><?= $sub ? 'Actualizar entrega' : 'Enviar entrega' ?></button>
@@ -443,7 +423,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
         </div>
 
-        <?php if ($isOwner && $allSubmissions): ?>
+        <?php if ($esPropietario && $allSubmissions): ?>
         <div class="panel">
             <div class="panel-header"><h2>Entregas recibidas</h2></div>
             <div class="panel-body">
@@ -451,30 +431,30 @@ require_once __DIR__ . '/includes/header.php';
                 <div class="assignment-item flex-column align-items-stretch">
                     <div class="d-flex justify-content-between flex-wrap gap-2">
                         <div>
-                            <strong><?= e($sub['student_name']) ?></strong> · <?= e($sub['assignment_title']) ?>
-                            <div class="small text-muted">Enviado <?= format_date($sub['submitted_at'], true) ?></div>
+                            <strong><?= escapar($sub['student_name']) ?></strong> · <?= escapar($sub['assignment_title']) ?>
+                            <div class="small text-muted">Enviado <?= formatear_fecha($sub['submitted_at'], true) ?></div>
                         </div>
                         <?php if ($sub['score'] !== null): ?>
-                            <span class="badge bg-success"><?= e($sub['score']) ?> / <?= e($sub['max_score']) ?></span>
+                            <span class="badge bg-success"><?= escapar($sub['score']) ?> / <?= escapar($sub['max_score']) ?></span>
                         <?php else: ?>
                             <span class="badge bg-warning text-dark">Sin calificar</span>
                         <?php endif; ?>
                     </div>
-                    <?php if ($sub['content']): ?><p class="small mt-2 mb-1"><?= nl2br(e($sub['content'])) ?></p><?php endif; ?>
+                    <?php if ($sub['content']): ?><p class="small mt-2 mb-1"><?= nl2br(escapar($sub['content'])) ?></p><?php endif; ?>
                     <?php if ($sub['file_path']): ?>
-                        <a class="small" href="<?= APP_URL ?>/uploads/<?= e($sub['file_path']) ?>" target="_blank"><i class="bi bi-paperclip"></i> Archivo adjunto</a>
+                        <a class="small" href="<?= URL_APP ?>/subidas/<?= escapar($sub['file_path']) ?>" target="_blank"><i class="bi bi-paperclip"></i> Archivo adjunto</a>
                     <?php endif; ?>
                     <form method="post" class="row g-2 mt-2 align-items-end">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="action" value="grade_submission">
+                        <?= campo_csrf() ?>
+                        <input type="hidden" name="accion" value="grade_submission">
                         <input type="hidden" name="submission_id" value="<?= (int) $sub['id'] ?>">
                         <div class="col-md-3">
-                            <label class="form-label small">Nota (máx <?= e($sub['max_score']) ?>)</label>
-                            <input type="number" step="0.01" name="score" class="form-control form-control-sm" value="<?= e($sub['score'] ?? '') ?>" required>
+                            <label class="form-label small">Nota (máx <?= escapar($sub['max_score']) ?>)</label>
+                            <input type="number" step="0.01" name="score" class="form-control form-control-sm" value="<?= escapar($sub['score'] ?? '') ?>" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small">Feedback</label>
-                            <input type="text" name="feedback" class="form-control form-control-sm" value="<?= e($sub['feedback'] ?? '') ?>">
+                            <input type="text" name="feedback" class="form-control form-control-sm" value="<?= escapar($sub['feedback'] ?? '') ?>">
                         </div>
                         <div class="col-md-3">
                             <button class="btn btn-sm btn-primary w-100" type="submit">Calificar</button>
@@ -487,14 +467,14 @@ require_once __DIR__ . '/includes/header.php';
         <?php endif; ?>
     </div>
 
-    <?php if ($isOwner): ?>
+    <?php if ($esPropietario): ?>
     <div class="col-lg-5">
         <div class="panel">
             <div class="panel-header"><h2>Nueva tarea</h2></div>
             <div class="panel-body">
                 <form method="post">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="add_assignment">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="add_assignment">
                     <div class="mb-3">
                         <label class="form-label">Título</label>
                         <input type="text" name="title" class="form-control" required>
@@ -519,33 +499,33 @@ require_once __DIR__ . '/includes/header.php';
     <?php endif; ?>
 </div>
 
-<?php elseif ($tab === 'forum'): ?>
+<?php elseif ($pestaña === 'foro'): ?>
 <div class="row g-4">
     <div class="col-lg-7">
         <?php if ($currentTopic): ?>
             <div class="panel mb-3">
                 <div class="panel-header">
-                    <h2><?= e($currentTopic['title']) ?></h2>
-                    <a href="?id=<?= $id ?>&tab=forum" class="btn btn-sm btn-outline-secondary">Volver</a>
+                    <h2><?= escapar($currentTopic['title']) ?></h2>
+                    <a href="?id=<?= $id ?>&pestaña=foro" class="btn btn-sm btn-outline-secondary">Volver</a>
                 </div>
                 <div class="panel-body">
                     <div class="mb-3 pb-3 border-bottom">
-                        <div class="small text-muted mb-2"><?= e($currentTopic['author_name']) ?> · <?= format_date($currentTopic['created_at'], true) ?></div>
-                        <p class="mb-0"><?= nl2br(e($currentTopic['body'])) ?></p>
+                        <div class="small text-muted mb-2"><?= escapar($currentTopic['author_name']) ?> · <?= formatear_fecha($currentTopic['created_at'], true) ?></div>
+                        <p class="mb-0"><?= nl2br(escapar($currentTopic['body'])) ?></p>
                     </div>
                     <?php foreach ($replies as $reply): ?>
                         <div class="mb-3 pb-3 border-bottom">
                             <div class="d-flex justify-content-between">
-                                <strong><?= e($reply['author_name']) ?></strong>
-                                <small class="text-muted"><?= format_date($reply['created_at'], true) ?></small>
+                                <strong><?= escapar($reply['author_name']) ?></strong>
+                                <small class="text-muted"><?= formatear_fecha($reply['created_at'], true) ?></small>
                             </div>
-                            <div class="mb-1"><?= role_badge($reply['author_role']) ?></div>
-                            <p class="mb-0 small"><?= nl2br(e($reply['body'])) ?></p>
+                            <div class="mb-1"><?= insignia_rol($reply['author_role']) ?></div>
+                            <p class="mb-0 small"><?= nl2br(escapar($reply['body'])) ?></p>
                         </div>
                     <?php endforeach; ?>
                     <form method="post" class="mt-3">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="action" value="add_reply">
+                        <?= campo_csrf() ?>
+                        <input type="hidden" name="accion" value="add_reply">
                         <input type="hidden" name="topic_id" value="<?= (int) $currentTopic['id'] ?>">
                         <label class="form-label">Tu respuesta</label>
                         <textarea name="body" class="form-control mb-2" rows="3" required></textarea>
@@ -561,10 +541,10 @@ require_once __DIR__ . '/includes/header.php';
                         <div class="empty-state"><i class="bi bi-chat"></i><p class="mb-0">No hay temas aún.</p></div>
                     <?php else: ?>
                         <?php foreach ($topics as $topic): ?>
-                            <a href="?id=<?= $id ?>&tab=forum&topic=<?= (int) $topic['id'] ?>" class="forum-item text-decoration-none text-dark">
+                            <a href="?id=<?= $id ?>&pestaña=foro&tema=<?= (int) $topic['id'] ?>" class="forum-item text-decoration-none text-dark">
                                 <div>
-                                    <strong><?= e($topic['title']) ?></strong>
-                                    <div class="small text-muted"><?= e($topic['author_name']) ?> · <?= format_date($topic['created_at']) ?> · <?= (int) $topic['replies'] ?> respuestas</div>
+                                    <strong><?= escapar($topic['title']) ?></strong>
+                                    <div class="small text-muted"><?= escapar($topic['author_name']) ?> · <?= formatear_fecha($topic['created_at']) ?> · <?= (int) $topic['replies'] ?> respuestas</div>
                                 </div>
                                 <i class="bi bi-chevron-right text-muted"></i>
                             </a>
@@ -579,8 +559,8 @@ require_once __DIR__ . '/includes/header.php';
             <div class="panel-header"><h2>Nuevo tema</h2></div>
             <div class="panel-body">
                 <form method="post">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="add_topic">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="add_topic">
                     <div class="mb-3">
                         <label class="form-label">Título</label>
                         <input type="text" name="title" class="form-control" required>
@@ -596,53 +576,9 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<?php elseif ($tab === 'announcements'): ?>
-<div class="row g-4">
-    <div class="col-lg-<?= $isOwner ? '7' : '12' ?>">
-        <div class="panel">
-            <div class="panel-header"><h2>Anuncios del curso</h2></div>
-            <div class="panel-body">
-                <?php if (!$courseAnnouncements): ?>
-                    <div class="empty-state"><i class="bi bi-megaphone"></i><p class="mb-0">Sin anuncios.</p></div>
-                <?php else: ?>
-                    <?php foreach ($courseAnnouncements as $ann): ?>
-                        <div class="mb-3 pb-3 border-bottom">
-                            <strong><?= e($ann['title']) ?></strong>
-                            <div class="small text-muted mb-2"><?= e($ann['author_name']) ?> · <?= format_date($ann['created_at'], true) ?></div>
-                            <p class="mb-0"><?= nl2br(e($ann['body'])) ?></p>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-    <?php if ($isOwner): ?>
-    <div class="col-lg-5">
-        <div class="panel">
-            <div class="panel-header"><h2>Nuevo anuncio</h2></div>
-            <div class="panel-body">
-                <form method="post">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="add_announcement">
-                    <div class="mb-3">
-                        <label class="form-label">Título</label>
-                        <input type="text" name="title" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Mensaje</label>
-                        <textarea name="body" class="form-control" rows="4" required></textarea>
-                    </div>
-                    <button class="btn btn-primary w-100" type="submit">Publicar</button>
-                </form>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
-</div>
-
-<?php elseif ($tab === 'students' && $isOwner): ?>
+<?php elseif ($pestaña === 'estudiantes' && $esPropietario): ?>
 <div class="panel">
-    <div class="panel-header"><h2>Estudiantes inscritos (<?= count($students) ?>)</h2></div>
+    <div class="panel-header"><h2>Estudiantes inscritos (<?= count($estudiantes) ?>)</h2></div>
     <div class="panel-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -656,21 +592,21 @@ require_once __DIR__ . '/includes/header.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (!$students): ?>
+                    <?php if (!$estudiantes): ?>
                         <tr><td colspan="5" class="text-center text-muted py-4">Sin estudiantes inscritos.</td></tr>
                     <?php endif; ?>
-                    <?php foreach ($students as $st): ?>
+                    <?php foreach ($estudiantes as $st): ?>
                     <tr>
-                        <td><?= e($st['name']) ?></td>
-                        <td><?= e($st['email']) ?></td>
-                        <td><?= status_badge($st['status']) ?></td>
-                        <td><?= format_date($st['enrolled_at']) ?></td>
+                        <td><?= escapar($st['name']) ?></td>
+                        <td><?= escapar($st['email']) ?></td>
+                        <td><?= insignia_estado($st['status']) ?></td>
+                        <td><?= formatear_fecha($st['enrolled_at']) ?></td>
                         <td class="text-end">
                             <?php if ($st['status'] === 'active'): ?>
                             <form method="post" class="d-inline" onsubmit="return confirm('¿Retirar estudiante?');">
-                                <?= csrf_field() ?>
-                                <input type="hidden" name="action" value="unenroll_student">
-                                <input type="hidden" name="student_id" value="<?= (int) $st['student_id'] ?>">
+                                <?= campo_csrf() ?>
+                                <input type="hidden" name="accion" value="retirar_estudiante">
+                                <input type="hidden" name="id_estudiante" value="<?= (int) $st['student_id'] ?>">
                                 <button class="btn btn-sm btn-outline-danger" type="submit">Retirar</button>
                             </form>
                             <?php endif; ?>
@@ -684,4 +620,4 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 <?php endif; ?>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/includes/pie.php'; ?>

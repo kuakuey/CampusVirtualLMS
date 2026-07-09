@@ -1,14 +1,14 @@
 <?php
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/funciones.php';
 
-if (is_logged_in()) {
-    redirect('dashboard.php');
+if (esta_logueado()) {
+    redirigir('panel.php');
 }
 
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf();
+    verificar_csrf();
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -22,46 +22,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array($role, ['student', 'teacher'], true)) $role = 'student';
 
     if (!$errors) {
-        $check = db()->prepare('SELECT id FROM users WHERE email = ?');
+        $check = bd()->prepare('SELECT id FROM users WHERE email = ?');
         $check->execute([$email]);
         if ($check->fetch()) {
             $errors[] = 'Ese correo ya está registrado.';
         } else {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = db()->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)');
+            $stmt = bd()->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)');
             $stmt->execute([$name, $email, $hash, $role]);
-            flash('success', 'Cuenta creada. Ya puedes iniciar sesión.');
-            redirect('login.php');
+            mensaje_flash('success', 'Cuenta creada. Ya puedes iniciar sesión.');
+            redirigir('iniciar-sesion.php');
         }
     }
 }
 
-$pageTitle = 'Registro';
-require_once __DIR__ . '/includes/header.php';
+$tituloPagina = 'Registro';
+require_once __DIR__ . '/includes/encabezado.php';
 ?>
 <div class="auth-card">
     <div class="auth-top">
         <div class="logo"><i class="bi bi-person-plus-fill"></i></div>
         <h1 class="h4 mb-1">Crear cuenta</h1>
-        <p class="mb-0 opacity-75">Únete a <?= e(APP_NAME) ?></p>
+        <p class="mb-0 opacity-75">Únete a <?= escapar(NOMBRE_APP) ?></p>
     </div>
     <div class="auth-body-inner">
         <?php if ($errors): ?>
             <div class="alert alert-danger py-2">
                 <ul class="mb-0 ps-3">
-                    <?php foreach ($errors as $err): ?><li><?= e($err) ?></li><?php endforeach; ?>
+                    <?php foreach ($errors as $err): ?><li><?= escapar($err) ?></li><?php endforeach; ?>
                 </ul>
             </div>
         <?php endif; ?>
         <form method="post">
-            <?= csrf_field() ?>
+            <?= campo_csrf() ?>
             <div class="mb-3">
                 <label class="form-label" for="name">Nombre completo</label>
-                <input type="text" class="form-control" id="name" name="name" value="<?= e($_POST['name'] ?? '') ?>" required>
+                <input type="text" class="form-control" id="name" name="name" value="<?= escapar($_POST['name'] ?? '') ?>" required>
             </div>
             <div class="mb-3">
                 <label class="form-label" for="email">Correo electrónico</label>
-                <input type="email" class="form-control" id="email" name="email" value="<?= e($_POST['email'] ?? '') ?>" required>
+                <input type="email" class="form-control" id="email" name="email" value="<?= escapar($_POST['email'] ?? '') ?>" required>
             </div>
             <div class="mb-3">
                 <label class="form-label" for="role">Tipo de cuenta</label>
@@ -80,7 +80,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <button type="submit" class="btn btn-primary w-100 mb-3">Registrarme</button>
         </form>
-        <p class="text-center mb-0">¿Ya tienes cuenta? <a href="<?= APP_URL ?>/login.php">Inicia sesión</a></p>
+        <p class="text-center mb-0">¿Ya tienes cuenta? <a href="<?= URL_APP ?>/iniciar-sesion.php">Inicia sesión</a></p>
     </div>
 </div>
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/includes/pie.php'; ?>
