@@ -1,0 +1,347 @@
+:root {
+    --av-navy: #0b3d5c;
+    --av-navy-dark: #072a40;
+    --av-teal: #1a8a7a;
+    --av-teal-light: #e6f5f2;
+    --av-sand: #f3efe6;
+    --av-ink: #1c2a33;
+    --av-muted: #5f6f7a;
+    --av-border: #d9e2e8;
+    --av-card: #ffffff;
+    --av-radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: "Segoe UI", "Trebuchet MS", Candara, sans-serif;
+    color: var(--av-ink);
+    background: var(--av-sand);
+    min-height: 100vh;
+}
+
+.app-body {
+    background:
+        radial-gradient(circle at top right, rgba(26, 138, 122, 0.12), transparent 35%),
+        linear-gradient(180deg, #eef4f7 0%, var(--av-sand) 45%, #ebe6db 100%);
+}
+
+.auth-body {
+    background:
+        linear-gradient(135deg, rgba(11, 61, 92, 0.92), rgba(26, 138, 122, 0.85)),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.app-navbar {
+    background: linear-gradient(90deg, var(--av-navy-dark), var(--av-navy) 55%, #0f5a6e);
+    box-shadow: 0 4px 18px rgba(7, 42, 64, 0.25);
+}
+
+.brand-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.navbar .nav-link {
+    border-radius: 8px;
+    padding: 0.45rem 0.8rem !important;
+}
+
+.navbar .nav-link.active,
+.navbar .nav-link:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--av-teal);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.app-main { min-height: calc(100vh - 130px); }
+
+.app-footer {
+    background: rgba(255, 255, 255, 0.7);
+    border-top: 1px solid var(--av-border);
+    color: var(--av-muted);
+    font-size: 0.9rem;
+}
+
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--av-navy);
+}
+
+.page-header .subtitle {
+    color: var(--av-muted);
+    margin: 0.25rem 0 0;
+}
+
+.stat-card {
+    background: var(--av-card);
+    border: 1px solid var(--av-border);
+    border-radius: var(--av-radius);
+    padding: 1.25rem;
+    height: 100%;
+    box-shadow: 0 8px 24px rgba(11, 61, 92, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(11, 61, 92, 0.1);
+}
+
+.stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    margin-bottom: 0.75rem;
+}
+
+.stat-card .stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--av-navy);
+    line-height: 1;
+}
+
+.stat-card .stat-label {
+    color: var(--av-muted);
+    font-size: 0.9rem;
+    margin-top: 0.35rem;
+}
+
+.icon-teal { background: var(--av-teal-light); color: var(--av-teal); }
+.icon-navy { background: #e7eef3; color: var(--av-navy); }
+.icon-amber { background: #fff3df; color: #c47b16; }
+.icon-rose { background: #fde8ea; color: #c23b4d; }
+
+.panel {
+    background: var(--av-card);
+    border: 1px solid var(--av-border);
+    border-radius: var(--av-radius);
+    box-shadow: 0 8px 24px rgba(11, 61, 92, 0.05);
+    overflow: hidden;
+}
+
+.panel-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--av-border);
+    background: linear-gradient(180deg, #fff, #f8fafb);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.panel-header h2,
+.panel-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--av-navy);
+}
+
+.panel-body { padding: 1.25rem; }
+
+.course-card {
+    background: var(--av-card);
+    border: 1px solid var(--av-border);
+    border-radius: var(--av-radius);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 24px rgba(11, 61, 92, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.course-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 30px rgba(11, 61, 92, 0.12);
+}
+
+.course-card .course-banner {
+    height: 110px;
+    background: linear-gradient(135deg, var(--av-navy), var(--av-teal));
+    display: flex;
+    align-items: flex-end;
+    padding: 1rem;
+    color: #fff;
+}
+
+.course-card .course-banner .code {
+    background: rgba(255,255,255,0.2);
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
+
+.course-card .course-body {
+    padding: 1.1rem 1.2rem 1.25rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.course-card h3 {
+    font-size: 1.05rem;
+    margin: 0 0 0.5rem;
+    color: var(--av-navy);
+}
+
+.course-card p {
+    color: var(--av-muted);
+    font-size: 0.92rem;
+    flex: 1;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+.auth-card .auth-top {
+    background: linear-gradient(135deg, var(--av-navy), #0f5a6e);
+    color: #fff;
+    padding: 1.75rem 1.5rem 1.5rem;
+    text-align: center;
+}
+
+.auth-card .auth-top .logo {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 0.75rem;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+}
+
+.auth-card .auth-body-inner { padding: 1.5rem; }
+
+.demo-accounts {
+    background: #f4f8fa;
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    font-size: 0.85rem;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--av-teal);
+    --bs-btn-border-color: var(--av-teal);
+    --bs-btn-hover-bg: #157567;
+    --bs-btn-hover-border-color: #157567;
+    --bs-btn-active-bg: #12685c;
+    --bs-btn-active-border-color: #12685c;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--av-teal);
+    --bs-btn-border-color: var(--av-teal);
+    --bs-btn-hover-bg: var(--av-teal);
+    --bs-btn-hover-border-color: var(--av-teal);
+    --bs-btn-active-bg: #12685c;
+    --bs-btn-active-border-color: #12685c;
+}
+
+.table > :not(caption) > * > * {
+    vertical-align: middle;
+}
+
+.lesson-item,
+.forum-item,
+.assignment-item {
+    border: 1px solid var(--av-border);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 0.75rem;
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.lesson-item:hover,
+.forum-item:hover {
+    border-color: #b7d0db;
+    background: #f8fbfc;
+}
+
+.content-html img { max-width: 100%; height: auto; }
+
+.sidebar-course {
+    background: #fff;
+    border: 1px solid var(--av-border);
+    border-radius: var(--av-radius);
+    overflow: hidden;
+}
+
+.sidebar-course .list-group-item {
+    border: 0;
+    border-bottom: 1px solid var(--av-border);
+    padding: 0.85rem 1rem;
+}
+
+.sidebar-course .list-group-item.active {
+    background: var(--av-teal-light);
+    color: var(--av-navy);
+    font-weight: 600;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--av-muted);
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    opacity: 0.45;
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+@media (max-width: 768px) {
+    .page-header h1 { font-size: 1.4rem; }
+    .stat-card .stat-value { font-size: 1.5rem; }
+}
