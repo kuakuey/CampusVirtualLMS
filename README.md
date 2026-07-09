@@ -27,7 +27,13 @@ Sistema de gestión de aprendizaje (tipo Moodle) desarrollado en **PHP + MySQL +
    define('DB_PASS', 'tu_password');
    ```
 
-5. Abre en el navegador:
+5. **Producción:** `APP_URL` se detecta sola según tu dominio. Si usas proxy/CDN, define la variable de entorno:
+   ```bash
+   APP_URL=https://tudominio.com
+   ```
+   O descomenta y fija la URL manualmente en `config/config.php`.
+
+6. Abre en el navegador:
    ```
    http://localhost/AulaVirtual
    ```
