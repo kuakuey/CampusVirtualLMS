@@ -35,9 +35,9 @@ if (!defined('APP_URL')) {
 }
 
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'aulavirtual');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_NAME', 'iglesiacasadeavi_lms');
+define('DB_USER', 'iglesiacasadeavi_kuakuey');
+define('DB_PASS', 'Superadmin29@!');
 define('DB_CHARSET', 'utf8mb4');
 
 define('UPLOAD_PATH', BASE_PATH . '/uploads');
