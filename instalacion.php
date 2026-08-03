@@ -49,7 +49,7 @@ function inst_obtener_mensaje(): ?array
     return $mensaje;
 }
 
-function inst_redirigir(): never
+function inst_redirigir(): void
 {
     header('Location: ' . URL_INSTALACION);
     exit;
@@ -186,7 +186,9 @@ $todoListo = $resumen['servidor']['exito'] && $resumen['bd_conectada'] && $resum
                         <button type="submit" class="btn btn-primary w-100 text-start" <?= !$resumen['existe_bd'] ? 'disabled' : '' ?>>
                             <i class="bi bi-arrow-repeat me-2"></i> Actualizar tablas
                             <?php
-                            $pendientesEstructura = array_filter($resumen['migraciones_pendientes'], fn ($f) => !str_contains($f, 'datos_iniciales'));
+                            $pendientesEstructura = array_filter($resumen['migraciones_pendientes'], function ($f) {
+                                return strpos($f, 'datos_iniciales') === false;
+                            });
                             if ($pendientesEstructura): ?>
                                 <span class="badge bg-warning text-dark ms-1"><?= count($pendientesEstructura) ?> pendiente(s)</span>
                             <?php endif; ?>

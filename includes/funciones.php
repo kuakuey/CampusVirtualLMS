@@ -6,9 +6,9 @@ function escapar(?string $valor): string
     return htmlspecialchars($valor ?? '', ENT_QUOTES, 'UTF-8');
 }
 
-function redirigir(string $ruta): never
+function redirigir(string $ruta): void
 {
-    $url = str_starts_with($ruta, 'http') ? $ruta : URL_APP . '/' . ltrim($ruta, '/');
+    $url = (strpos($ruta, 'http') === 0) ? $ruta : URL_APP . '/' . ltrim($ruta, '/');
     header('Location: ' . $url);
     exit;
 }
@@ -46,7 +46,7 @@ function requiere_sesion(): void
     }
 }
 
-function requiere_rol(string|array $roles): void
+function requiere_rol($roles): void
 {
     requiere_sesion();
     $roles = (array) $roles;
@@ -58,22 +58,22 @@ function requiere_rol(string|array $roles): void
 
 function etiqueta_rol(string $rol): string
 {
-    return match ($rol) {
-        'admin' => 'Administrador',
-        'teacher' => 'Docente',
-        'student' => 'Estudiante',
-        default => $rol,
-    };
+    switch ($rol) {
+        case 'admin': return 'Administrador';
+        case 'teacher': return 'Docente';
+        case 'student': return 'Estudiante';
+        default: return $rol;
+    }
 }
 
 function insignia_rol(string $rol): string
 {
-    $clase = match ($rol) {
-        'admin' => 'bg-danger',
-        'teacher' => 'bg-primary',
-        'student' => 'bg-success',
-        default => 'bg-secondary',
-    };
+    switch ($rol) {
+        case 'admin': $clase = 'bg-danger'; break;
+        case 'teacher': $clase = 'bg-primary'; break;
+        case 'student': $clase = 'bg-success'; break;
+        default: $clase = 'bg-secondary';
+    }
     return '<span class="badge ' . $clase . '">' . escapar(etiqueta_rol($rol)) . '</span>';
 }
 

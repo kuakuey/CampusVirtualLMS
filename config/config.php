@@ -2,6 +2,12 @@
 /**
  * AulaVirtual LMS - Configuración
  */
+if (version_compare(PHP_VERSION, '7.4.0', '<')) {
+    http_response_code(500);
+    header('Content-Type: text/html; charset=utf-8');
+    die('<h1>PHP incompatible</h1><p>Se requiere PHP 7.4 o superior. Versión actual: <strong>' . htmlspecialchars(PHP_VERSION) . '</strong></p>');
+}
+
 define('NOMBRE_APP', 'AulaVirtual');
 define('RUTA_BASE', dirname(__DIR__));
 
@@ -53,6 +59,17 @@ define('URL_USUARIOS', URL_APP . '/admin/usuarios.php');
 define('URL_CATEGORIAS', URL_APP . '/admin/categorias.php');
 
 date_default_timezone_set('America/Bogota');
+
+// Registra errores en archivo (útil en producción)
+$directorioLogs = RUTA_BASE . '/logs';
+if (!is_dir($directorioLogs)) {
+    @mkdir($directorioLogs, 0755, true);
+}
+if (is_dir($directorioLogs) && is_writable($directorioLogs)) {
+    ini_set('log_errors', '1');
+    ini_set('error_log', $directorioLogs . '/errores.log');
+}
+error_reporting(E_ALL);
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

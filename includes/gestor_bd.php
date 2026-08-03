@@ -29,7 +29,7 @@ class GestorBd
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
-        } catch (PDOException) {
+        } catch (PDOException $e) {
             return null;
         }
     }
@@ -51,7 +51,7 @@ class GestorBd
             $consulta = $pdo->prepare('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?');
             $consulta->execute([BD_NOMBRE]);
             return (bool) $consulta->fetch();
-        } catch (PDOException) {
+        } catch (PDOException $e) {
             return false;
         }
     }
@@ -99,7 +99,7 @@ class GestorBd
         try {
             self::asegurarTablaMigraciones($pdo);
             return $pdo->query('SELECT migration, executed_at FROM schema_migrations ORDER BY migration')->fetchAll();
-        } catch (PDOException) {
+        } catch (PDOException $e) {
             return [];
         }
     }
@@ -173,7 +173,9 @@ class GestorBd
     {
         $pendientes = self::obtenerMigracionesPendientes();
         if ($soloEstructura) {
-            $pendientes = array_values(array_filter($pendientes, fn ($f) => !str_contains($f, 'datos_iniciales')));
+            $pendientes = array_values(array_filter($pendientes, function ($f) {
+                return strpos($f, 'datos_iniciales') === false;
+            }));
         }
         if (!$pendientes) {
             return ['exito' => true, 'mensaje' => 'No hay migraciones pendientes.', 'resultados' => []];
@@ -194,7 +196,9 @@ class GestorBd
     {
         $pdo = self::obtenerConexionBaseDatos();
         if (!$pdo) {
-            return array_map(fn ($tabla) => ['nombre' => $tabla, 'existe' => false, 'registros' => null], self::TABLAS_APP);
+            return array_map(function ($tabla) {
+                return ['nombre' => $tabla, 'existe' => false, 'registros' => null];
+            }, self::TABLAS_APP);
         }
 
         $estado = [];
@@ -208,7 +212,7 @@ class GestorBd
                 if ($existe) {
                     $registros = (int) $pdo->query('SELECT COUNT(*) FROM `' . str_replace('`', '``', $tabla) . '`')->fetchColumn();
                 }
-            } catch (PDOException) {
+            } catch (PDOException $e) {
                 $existe = false;
             }
             $estado[] = ['nombre' => $tabla, 'existe' => $existe, 'registros' => $registros];
@@ -224,7 +228,9 @@ class GestorBd
         $aplicadas = self::obtenerMigracionesAplicadas($pdo);
         $pendientes = self::obtenerMigracionesPendientes($pdo);
         $tablas = self::obtenerEstadoTablas();
-        $tablasExistentes = count(array_filter($tablas, fn ($t) => $t['existe']));
+        $tablasExistentes = count(array_filter($tablas, function ($t) {
+            return $t['existe'];
+        }));
 
         return [
             'servidor' => $servidor,
