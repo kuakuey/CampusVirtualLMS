@@ -47,13 +47,12 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
                 <?php endif; ?>
                 <?php if ($usuario['role'] === 'admin'): ?>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?= in_array($paginaActual, ['usuarios.php','categorias.php','grupos-cursos.php'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle <?= in_array($paginaActual, ['usuarios.php','categorias.php'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">
                         <i class="bi bi-gear me-1"></i> Administración
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="<?= URL_USUARIOS ?>"><i class="bi bi-people me-2"></i>Usuarios</a></li>
                         <li><a class="dropdown-item" href="<?= URL_CATEGORIAS ?>"><i class="bi bi-tags me-2"></i>Categorías</a></li>
-                        <li><a class="dropdown-item" href="<?= URL_GRUPOS ?>"><i class="bi bi-collection me-2"></i>Grupos de cursos</a></li>
                         <li><a class="dropdown-item" href="<?= URL_CURSOS ?>"><i class="bi bi-collection me-2"></i>Cursos</a></li>
                     </ul>
                 </li>

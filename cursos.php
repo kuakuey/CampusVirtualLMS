@@ -6,7 +6,6 @@ $usuario = usuario_actual();
 $tituloPagina = 'Cursos';
 $buscar = trim($_GET['buscar'] ?? '');
 $estado = $_GET['estado'] ?? '';
-$idGrupo = (int) ($_GET['grupo'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'eliminar_curso') {
     verificar_csrf();
@@ -27,15 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'elimi
     redirigir('cursos.php');
 }
 
-$grupos = bd()->query('SELECT id, name FROM course_groups ORDER BY sort_order, name')->fetchAll();
-
-$sql = 'SELECT c.*, u.name AS teacher_name, cat.name AS category_name, g.name AS group_name,
+$sql = 'SELECT c.*, u.name AS teacher_name, cat.name AS category_name,
                (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students,
                (SELECT COUNT(*) FROM lessons l WHERE l.course_id = c.id) AS lessons_count
         FROM courses c
         JOIN users u ON u.id = c.teacher_id
         LEFT JOIN categories cat ON cat.id = c.category_id
-        LEFT JOIN course_groups g ON g.id = c.group_id
         WHERE 1=1';
 $params = [];
 
@@ -60,12 +56,7 @@ if ($estado !== '' && in_array($estado, ['draft', 'published', 'archived'], true
     $params[] = $estado;
 }
 
-if ($idGrupo > 0) {
-    $sql .= ' AND c.group_id = ?';
-    $params[] = $idGrupo;
-}
-
-$sql .= ' ORDER BY g.sort_order, g.name, c.created_at DESC';
+$sql .= ' ORDER BY c.created_at DESC';
 $stmt = bd()->prepare($sql);
 $stmt->execute($params);
 $cursos = $stmt->fetchAll();
@@ -85,9 +76,6 @@ require_once __DIR__ . '/includes/encabezado.php';
         <?php if (in_array($usuario['role'], ['admin', 'teacher'], true)): ?>
             <a href="<?= URL_APP ?>/curso-formulario.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo curso</a>
         <?php endif; ?>
-        <?php if ($usuario['role'] === 'admin'): ?>
-            <a href="<?= URL_GRUPOS ?>" class="btn btn-outline-secondary"><i class="bi bi-collection me-1"></i> Grupos</a>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -99,22 +87,13 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <input type="text" name="buscar" class="form-control" value="<?= escapar($buscar) ?>" placeholder="Título, código o descripción">
             </div>
             <?php if ($usuario['role'] !== 'student'): ?>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label class="form-label">Estado</label>
                 <select name="estado" class="form-select">
                     <option value="">Todos</option>
                     <option value="published" <?= $estado === 'published' ? 'selected' : '' ?>>Publicado</option>
                     <option value="draft" <?= $estado === 'draft' ? 'selected' : '' ?>>Borrador</option>
                     <option value="archived" <?= $estado === 'archived' ? 'selected' : '' ?>>Archivado</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Grupo</label>
-                <select name="grupo" class="form-select">
-                    <option value="0">Todos los grupos</option>
-                    <?php foreach ($grupos as $grupo): ?>
-                        <option value="<?= (int) $grupo['id'] ?>" <?= $idGrupo === (int) $grupo['id'] ? 'selected' : '' ?>><?= escapar($grupo['name']) ?></option>
-                    <?php endforeach; ?>
                 </select>
             </div>
             <?php endif; ?>
@@ -144,9 +123,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <p><?= escapar(mb_strimwidth($curso['description'] ?? '', 0, 100, '…')) ?></p>
                 <div class="small text-muted mb-3">
                     <div><i class="bi bi-person me-1"></i><?= escapar($curso['teacher_name']) ?></div>
-                    <?php if ($curso['group_name']): ?>
-                        <div><i class="bi bi-collection me-1"></i><?= escapar($curso['group_name']) ?></div>
-                    <?php endif; ?>
                     <div><i class="bi bi-tag me-1"></i><?= escapar($curso['category_name'] ?? 'Sin categoría') ?></div>
                     <div><i class="bi bi-people me-1"></i><?= (int) $curso['students'] ?> alumnos · <?= (int) $curso['lessons_count'] ?> lecciones</div>
                 </div>

@@ -59,7 +59,6 @@ define('URL_PERFIL', URL_APP . '/perfil.php');
 define('URL_INSTALACION', URL_APP . '/instalacion.php');
 define('URL_USUARIOS', URL_APP . '/admin/usuarios.php');
 define('URL_CATEGORIAS', URL_APP . '/admin/categorias.php');
-define('URL_GRUPOS', URL_APP . '/admin/grupos-cursos.php');
 
 date_default_timezone_set('America/Bogota');
 

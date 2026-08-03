@@ -148,10 +148,9 @@ function puede_acceder_curso(array $curso): bool
 function obtener_curso(int $id): ?array
 {
     $consulta = bd()->prepare(
-        'SELECT c.*, cat.name AS category_name, g.name AS group_name, u.name AS teacher_name
+        'SELECT c.*, cat.name AS category_name, u.name AS teacher_name
          FROM courses c
          LEFT JOIN categories cat ON cat.id = c.category_id
-         LEFT JOIN course_groups g ON g.id = c.group_id
          JOIN users u ON u.id = c.teacher_id
          WHERE c.id = ?'
     );
@@ -329,10 +328,9 @@ function obtener_curso_por_token_inscripcion(string $token): ?array
         return null;
     }
     $consulta = bd()->prepare(
-        'SELECT c.*, cat.name AS category_name, g.name AS group_name, u.name AS teacher_name
+        'SELECT c.*, cat.name AS category_name, u.name AS teacher_name
          FROM courses c
          LEFT JOIN categories cat ON cat.id = c.category_id
-         LEFT JOIN course_groups g ON g.id = c.group_id
          JOIN users u ON u.id = c.teacher_id
          WHERE c.enrollment_token = ? LIMIT 1'
     );

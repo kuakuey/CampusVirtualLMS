@@ -21,7 +21,6 @@ if ($curso && $usuario['role'] === 'teacher' && (int) $curso['teacher_id'] !== (
 $tituloPagina = $esNuevo ? 'Nuevo curso' : 'Editar curso';
 
 $categories = bd()->query('SELECT * FROM categories ORDER BY name')->fetchAll();
-$grupos = bd()->query('SELECT * FROM course_groups ORDER BY sort_order, name')->fetchAll();
 $teachers = [];
 if ($usuario['role'] === 'admin') {
     $teachers = bd()->query('SELECT id, name FROM users WHERE role = "teacher" AND status = 1 ORDER BY name')->fetchAll();
@@ -47,7 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $code = strtoupper(trim($_POST['code'] ?? ''));
     $description = trim($_POST['description'] ?? '');
     $idCategoria = (int) ($_POST['category_id'] ?? 0) ?: null;
-    $idGrupo = (int) ($_POST['group_id'] ?? 0) ?: null;
     $estado = $_POST['estado'] ?? 'draft';
     $tipoInscripcion = $_POST['enrollment_type'] ?? 'public';
     $claveInscripcion = trim($_POST['enrollment_password'] ?? '');
@@ -90,10 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($esNuevo) {
             $stmt = bd()->prepare(
-                'INSERT INTO courses (category_id, group_id, teacher_id, title, code, description, status, enrollment_type, enrollment_password, enrollment_token, enrollment_deadline)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+                'INSERT INTO courses (category_id, teacher_id, title, code, description, status, enrollment_type, enrollment_password, enrollment_token, enrollment_deadline)
+                 VALUES (?,?,?,?,?,?,?,?,?,?)'
             );
-            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion]);
+            $stmt->execute([$idCategoria, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion]);
             $id = (int) bd()->lastInsertId();
             mensaje_flash('success', 'Curso creado correctamente.');
         } else {
@@ -103,9 +101,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $token = $curso['enrollment_token'] ?? null;
             }
             $stmt = bd()->prepare(
-                'UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=?, enrollment_deadline=? WHERE id=?'
+                'UPDATE courses SET category_id=?, teacher_id=?, title=?, code=?, description=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=?, enrollment_deadline=? WHERE id=?'
             );
-            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion, $id]);
+            $stmt->execute([$idCategoria, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion, $id]);
             mensaje_flash('success', 'Curso actualizado.');
         }
         redirigir('curso.php?id=' . $id);
@@ -118,7 +116,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'code' => $code,
             'description' => $description,
             'category_id' => $idCategoria,
-            'group_id' => $idGrupo,
             'status' => $estado,
             'enrollment_type' => $tipoInscripcion,
             'enrollment_deadline' => $fechaLimiteInscripcion,
@@ -132,7 +129,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'code' => $codigoGenerado,
         'description' => '',
         'category_id' => '',
-        'group_id' => '',
         'status' => 'draft',
         'enrollment_type' => 'public',
         'enrollment_deadline' => '',
@@ -207,15 +203,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                 </div>
                 <?php endif; ?>
 
-                <div class="col-md-6">
-                    <label class="form-label">Grupo de cursos</label>
-                    <select name="group_id" class="form-select">
-                        <option value="">Sin grupo</option>
-                        <?php foreach ($grupos as $grupo): ?>
-                            <option value="<?= (int) $grupo['id'] ?>" <?= (int) ($_POST['group_id'] ?? 0) === (int) $grupo['id'] ? 'selected' : '' ?>><?= escapar($grupo['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
                 <div class="col-md-6">
                     <label class="form-label">Categoría</label>
                     <select name="category_id" class="form-select">

@@ -7,18 +7,15 @@ $usuario = usuario_actual();
 $tituloPagina = 'Catálogo de cursos';
 $buscar = trim($_GET['buscar'] ?? '');
 $idCategoria = (int) ($_GET['categoria'] ?? 0);
-$idGrupo = (int) ($_GET['grupo'] ?? 0);
 
 $categories = bd()->query('SELECT * FROM categories ORDER BY name')->fetchAll();
-$grupos = bd()->query('SELECT * FROM course_groups ORDER BY sort_order, name')->fetchAll();
 
-$sql = 'SELECT c.*, u.name AS teacher_name, cat.name AS category_name, g.name AS group_name,
+$sql = 'SELECT c.*, u.name AS teacher_name, cat.name AS category_name,
                (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students,
                EXISTS(SELECT 1 FROM enrollments e WHERE e.course_id = c.id AND e.student_id = ? AND e.status = "active") AS enrolled
         FROM courses c
         JOIN users u ON u.id = c.teacher_id
         LEFT JOIN categories cat ON cat.id = c.category_id
-        LEFT JOIN course_groups g ON g.id = c.group_id
         WHERE c.status = "published" AND c.enrollment_type IN ("public", "password")
         AND (c.enrollment_deadline IS NULL OR c.enrollment_deadline >= CURDATE())';
 $params = [$usuario['id']];
@@ -32,11 +29,7 @@ if ($idCategoria > 0) {
     $sql .= ' AND c.category_id = ?';
     $params[] = $idCategoria;
 }
-if ($idGrupo > 0) {
-    $sql .= ' AND c.group_id = ?';
-    $params[] = $idGrupo;
-}
-$sql .= ' ORDER BY g.sort_order, g.name, c.title';
+$sql .= ' ORDER BY c.title';
 
 $stmt = bd()->prepare($sql);
 $stmt->execute($params);
@@ -82,18 +75,10 @@ require_once __DIR__ . '/includes/encabezado.php';
 <div class="panel mb-4">
     <div class="panel-body">
         <form class="row g-2" method="get">
-            <div class="col-md-4">
+            <div class="col-md-5">
                 <input type="text" name="buscar" class="form-control" value="<?= escapar($buscar) ?>" placeholder="Buscar cursos...">
             </div>
-            <div class="col-md-3">
-                <select name="grupo" class="form-select">
-                    <option value="0">Todos los grupos</option>
-                    <?php foreach ($grupos as $grupo): ?>
-                        <option value="<?= (int) $grupo['id'] ?>" <?= $idGrupo === (int) $grupo['id'] ? 'selected' : '' ?>><?= escapar($grupo['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-3">
+            <div class="col-md-5">
                 <select name="categoria" class="form-select">
                     <option value="0">Todas las categorías</option>
                     <?php foreach ($categories as $cat): ?>
@@ -121,7 +106,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <p><?= escapar(mb_strimwidth($curso['description'] ?? '', 0, 110, '…')) ?></p>
                 <div class="small text-muted mb-3">
                     <?= escapar($curso['teacher_name']) ?>
-                    <?php if ($curso['group_name']): ?> · <?= escapar($curso['group_name']) ?><?php endif; ?>
                     · <?= escapar($curso['category_name'] ?? 'General') ?> · <?= (int) $curso['students'] ?> alumnos
                     <?php if (!empty($curso['enrollment_deadline'])): ?>
                         <div class="mt-1"><i class="bi bi-calendar-event me-1"></i>Inscripción hasta <?= formatear_fecha($curso['enrollment_deadline']) ?></div>
