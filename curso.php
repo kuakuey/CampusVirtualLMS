@@ -264,9 +264,6 @@ require_once __DIR__ . '/includes/encabezado.php';
     <div>
         <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
             <span class="badge text-bg-light border"><?= escapar($curso['code']) ?></span>
-            <?= insignia_estado($curso['status']) ?>
-            <?= insignia_metodo_inscripcion($curso['enrollment_type'] ?? 'public') ?>
-            <?php if ($curso['group_name']): ?><span class="badge bg-info text-dark"><?= escapar($curso['group_name']) ?></span><?php endif; ?>
             <?php if ($curso['category_name']): ?><span class="badge bg-secondary"><?= escapar($curso['category_name']) ?></span><?php endif; ?>
         </div>
         <h1><?= escapar($curso['title']) ?></h1>
