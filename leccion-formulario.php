@@ -20,6 +20,8 @@ if (!$curso || !es_propietario_curso($curso, $usuario)) {
 $idCurso = (int) $leccion['course_id'];
 $tituloPagina = 'Editar lección';
 $errors = [];
+$subcursos = obtener_subcursos_curso($idCurso);
+$mostrarSelectorSubcurso = count($subcursos) > 1;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificar_csrf();
@@ -27,9 +29,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $content = trim($_POST['content'] ?? '');
     $video = trim($_POST['video_url'] ?? '');
     $order = (int) ($_POST['sort_order'] ?? 0);
+    $idSubcurso = (int) ($_POST['subcourse_id'] ?? 0);
 
     if ($title === '') {
         $errors[] = 'El título es obligatorio.';
+    }
+    if ($mostrarSelectorSubcurso && ($idSubcurso <= 0 || !obtener_subcurso($idSubcurso, $idCurso))) {
+        $errors[] = 'Selecciona un subcurso válido.';
+    }
+    if (!$mostrarSelectorSubcurso) {
+        $idSubcurso = (int) ($leccion['subcourse_id'] ?? 0);
+        if ($idSubcurso <= 0) {
+            $idSubcurso = asegurar_subcurso_default($idCurso);
+        }
     }
 
     $adjunto = $leccion['attachment'] ?? null;
@@ -47,9 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$errors) {
         $consulta = bd()->prepare(
-            'UPDATE lessons SET title=?, content=?, video_url=?, sort_order=?, attachment=? WHERE id=? AND course_id=?'
+            'UPDATE lessons SET subcourse_id=?, title=?, content=?, video_url=?, sort_order=?, attachment=? WHERE id=? AND course_id=?'
         );
-        $consulta->execute([$title, $content, $video ?: null, $order, $adjunto, $id, $idCurso]);
+        $consulta->execute([$idSubcurso, $title, $content, $video ?: null, $order, $adjunto, $id, $idCurso]);
         mensaje_flash('success', 'Lección actualizada.');
         redirigir('leccion.php?id=' . $id);
     }
@@ -59,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'content' => $content,
         'video_url' => $video,
         'sort_order' => $order,
+        'subcourse_id' => $idSubcurso,
         'attachment' => $adjunto,
     ]);
 }
@@ -90,6 +103,18 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <label class="form-label">Título</label>
                 <input type="text" name="title" class="form-control" value="<?= escapar($leccion['title']) ?>" required>
             </div>
+            <?php if ($mostrarSelectorSubcurso): ?>
+            <div class="mb-3">
+                <label class="form-label">Subcurso</label>
+                <select name="subcourse_id" class="form-select" required>
+                    <?php foreach ($subcursos as $subcurso): ?>
+                        <option value="<?= (int) $subcurso['id'] ?>" <?= (int) ($leccion['subcourse_id'] ?? 0) === (int) $subcurso['id'] ? 'selected' : '' ?>>
+                            <?= escapar($subcurso['title']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
             <div class="mb-3">
                 <label class="form-label">Contenido (HTML permitido)</label>
                 <textarea name="content" class="form-control" rows="8"><?= escapar($leccion['content'] ?? '') ?></textarea>

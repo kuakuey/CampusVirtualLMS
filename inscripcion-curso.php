@@ -29,6 +29,11 @@ if ($curso['status'] !== 'published') {
     redirigir($usuario['role'] === 'student' ? 'catalogo.php' : 'panel.php');
 }
 
+if (!inscripcion_abierta($curso)) {
+    mensaje_flash('danger', 'El plazo de inscripción para este curso ha finalizado.');
+    redirigir($usuario['role'] === 'student' ? 'catalogo.php' : 'panel.php');
+}
+
 if ($usuario['role'] !== 'student') {
     mensaje_flash('info', 'Como docente o administrador ya tienes acceso al curso.');
     redirigir('curso.php?id=' . (int) $curso['id']);

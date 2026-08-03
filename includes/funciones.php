@@ -163,14 +163,68 @@ function obtener_curso(int $id): ?array
 function obtener_leccion(int $id): ?array
 {
     $consulta = bd()->prepare(
-        'SELECT l.*, c.title AS course_title, c.teacher_id, c.id AS course_id
+        'SELECT l.*, c.title AS course_title, c.teacher_id, c.id AS course_id,
+                s.title AS subcourse_title, s.sort_order AS subcourse_sort
          FROM lessons l
          JOIN courses c ON c.id = l.course_id
+         LEFT JOIN subcourses s ON s.id = l.subcourse_id
          WHERE l.id = ?'
     );
     $consulta->execute([$id]);
     $leccion = $consulta->fetch();
     return $leccion ?: null;
+}
+
+function obtener_subcursos_curso(int $idCurso): array
+{
+    $consulta = bd()->prepare('SELECT * FROM subcourses WHERE course_id = ? ORDER BY sort_order, id');
+    $consulta->execute([$idCurso]);
+    return $consulta->fetchAll();
+}
+
+function contar_subcursos_curso(int $idCurso): int
+{
+    return contar_consulta('SELECT COUNT(*) FROM subcourses WHERE course_id = ?', [$idCurso]);
+}
+
+function asegurar_subcurso_default(int $idCurso): int
+{
+    $consulta = bd()->prepare('SELECT id FROM subcourses WHERE course_id = ? ORDER BY sort_order, id LIMIT 1');
+    $consulta->execute([$idCurso]);
+    $id = $consulta->fetchColumn();
+    if ($id) {
+        return (int) $id;
+    }
+    $insert = bd()->prepare('INSERT INTO subcourses (course_id, title, sort_order) VALUES (?, ?, 1)');
+    $insert->execute([$idCurso, 'Contenido']);
+    return (int) bd()->lastInsertId();
+}
+
+function obtener_subcurso(int $id, ?int $idCurso = null): ?array
+{
+    $sql = 'SELECT * FROM subcourses WHERE id = ?';
+    $params = [$id];
+    if ($idCurso !== null) {
+        $sql .= ' AND course_id = ?';
+        $params[] = $idCurso;
+    }
+    $consulta = bd()->prepare($sql);
+    $consulta->execute($params);
+    $subcurso = $consulta->fetch();
+    return $subcurso ?: null;
+}
+
+function obtener_lecciones_curso(int $idCurso): array
+{
+    $consulta = bd()->prepare(
+        'SELECT l.*, s.title AS subcourse_title, s.sort_order AS subcourse_sort
+         FROM lessons l
+         LEFT JOIN subcourses s ON s.id = l.subcourse_id
+         WHERE l.course_id = ?
+         ORDER BY COALESCE(s.sort_order, 999), s.id, l.sort_order, l.id'
+    );
+    $consulta->execute([$idCurso]);
+    return $consulta->fetchAll();
 }
 
 function es_propietario_curso(array $curso, ?array $usuario = null): bool
@@ -317,6 +371,24 @@ function inscribir_estudiante_en_curso(int $idCurso, int $idEstudiante): bool
          ON DUPLICATE KEY UPDATE status = "active"'
     );
     return $consulta->execute([$idCurso, $idEstudiante]);
+}
+
+function inscripcion_abierta(array $curso): bool
+{
+    $fecha = $curso['enrollment_deadline'] ?? null;
+    if (!$fecha) {
+        return true;
+    }
+    return strtotime($fecha) >= strtotime(date('Y-m-d'));
+}
+
+function fecha_para_input(?string $fecha): string
+{
+    if (!$fecha) {
+        return '';
+    }
+    $marca = strtotime($fecha);
+    return $marca ? date('Y-m-d', $marca) : '';
 }
 
 function etiqueta_metodo_inscripcion(string $tipo): string

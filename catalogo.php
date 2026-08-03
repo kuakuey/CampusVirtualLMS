@@ -19,7 +19,8 @@ $sql = 'SELECT c.*, u.name AS teacher_name, cat.name AS category_name, g.name AS
         JOIN users u ON u.id = c.teacher_id
         LEFT JOIN categories cat ON cat.id = c.category_id
         LEFT JOIN course_groups g ON g.id = c.group_id
-        WHERE c.status = "published" AND c.enrollment_type IN ("public", "password")';
+        WHERE c.status = "published" AND c.enrollment_type IN ("public", "password")
+        AND (c.enrollment_deadline IS NULL OR c.enrollment_deadline >= CURDATE())';
 $params = [$usuario['id']];
 
 if ($buscar !== '') {
@@ -46,7 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_curso_inscripcion'
     $idCurso = (int) $_POST['id_curso_inscripcion'];
     $curso = obtener_curso($idCurso);
     if ($curso && $curso['status'] === 'published' && in_array($curso['enrollment_type'] ?? 'public', ['public', 'password'], true)) {
-        if (esta_matriculado($idCurso)) {
+        if (!inscripcion_abierta($curso)) {
+            mensaje_flash('danger', 'El plazo de inscripción para este curso ha finalizado.');
+        } elseif (esta_matriculado($idCurso)) {
             mensaje_flash('info', 'Ya estás inscrito en este curso.');
         } elseif (($curso['enrollment_type'] ?? 'public') === 'password') {
             $clave = trim($_POST['clave_inscripcion'] ?? '');
@@ -120,6 +123,9 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?= escapar($curso['teacher_name']) ?>
                     <?php if ($curso['group_name']): ?> · <?= escapar($curso['group_name']) ?><?php endif; ?>
                     · <?= escapar($curso['category_name'] ?? 'General') ?> · <?= (int) $curso['students'] ?> alumnos
+                    <?php if (!empty($curso['enrollment_deadline'])): ?>
+                        <div class="mt-1"><i class="bi bi-calendar-event me-1"></i>Inscripción hasta <?= formatear_fecha($curso['enrollment_deadline']) ?></div>
+                    <?php endif; ?>
                 </div>
                 <?php if ($curso['enrolled']): ?>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-success w-100"><i class="bi bi-check2 me-1"></i> Ya inscrito · Abrir</a>

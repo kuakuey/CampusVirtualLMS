@@ -51,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $estado = $_POST['estado'] ?? 'draft';
     $tipoInscripcion = $_POST['enrollment_type'] ?? 'public';
     $claveInscripcion = trim($_POST['enrollment_password'] ?? '');
+    $fechaLimiteInscripcion = trim($_POST['enrollment_deadline'] ?? '');
     $teacherId = $usuario['role'] === 'admin' ? (int) ($_POST['teacher_id'] ?? 0) : (int) $usuario['id'];
 
     if ($title === '') $errors[] = 'El título es obligatorio.';
@@ -62,6 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($tipoInscripcion === 'password' && $claveInscripcion === '' && ($esNuevo || empty($curso['enrollment_password']))) {
         $errors[] = 'Define una contraseña de inscripción.';
     }
+    if ($fechaLimiteInscripcion !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaLimiteInscripcion)) {
+        $errors[] = 'La fecha límite de inscripción no es válida.';
+    }
+    $fechaLimiteInscripcion = $fechaLimiteInscripcion !== '' ? $fechaLimiteInscripcion : null;
 
     if (!$errors) {
         $check = bd()->prepare('SELECT id FROM courses WHERE code = ? AND id != ?');
@@ -85,10 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($esNuevo) {
             $stmt = bd()->prepare(
-                'INSERT INTO courses (category_id, group_id, teacher_id, title, code, description, status, enrollment_type, enrollment_password, enrollment_token)
-                 VALUES (?,?,?,?,?,?,?,?,?,?)'
+                'INSERT INTO courses (category_id, group_id, teacher_id, title, code, description, status, enrollment_type, enrollment_password, enrollment_token, enrollment_deadline)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?)'
             );
-            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token]);
+            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion]);
             $id = (int) bd()->lastInsertId();
             mensaje_flash('success', 'Curso creado correctamente.');
         } else {
@@ -98,9 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $token = $curso['enrollment_token'] ?? null;
             }
             $stmt = bd()->prepare(
-                'UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=? WHERE id=?'
+                'UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=?, enrollment_deadline=? WHERE id=?'
             );
-            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $id]);
+            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion, $id]);
             mensaje_flash('success', 'Curso actualizado.');
         }
         redirigir('curso.php?id=' . $id);
@@ -116,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'group_id' => $idGrupo,
             'status' => $estado,
             'enrollment_type' => $tipoInscripcion,
+            'enrollment_deadline' => $fechaLimiteInscripcion,
             'teacher_id' => $teacherId,
         ]);
         $urlInscripcion = url_inscripcion_curso($curso);
@@ -129,6 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'group_id' => '',
         'status' => 'draft',
         'enrollment_type' => 'public',
+        'enrollment_deadline' => '',
         'teacher_id' => $usuario['role'] === 'admin' ? '' : $usuario['id'],
     ];
 } else {
@@ -181,6 +188,12 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <div class="col-12" id="campo-clave-inscripcion" style="display:none;">
                     <label class="form-label">Contraseña de inscripción</label>
                     <input type="text" name="enrollment_password" class="form-control" placeholder="<?= !$esNuevo && !empty($curso['enrollment_password']) ? 'Dejar vacío para mantener la actual' : 'Contraseña requerida' ?>">
+                </div>
+
+                <div class="col-md-6" id="campo-fecha-limite-inscripcion">
+                    <label class="form-label">Fecha límite de inscripción</label>
+                    <input type="date" name="enrollment_deadline" class="form-control" value="<?= escapar(fecha_para_input($_POST['enrollment_deadline'] ?? null)) ?>">
+                    <small class="text-muted">Opcional. Después de esta fecha no habrá nuevas inscripciones y el curso dejará de aparecer en el catálogo.</small>
                 </div>
 
                 <?php if (!$esNuevo): ?>

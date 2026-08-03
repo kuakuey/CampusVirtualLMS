@@ -4,13 +4,7 @@ requiere_sesion();
 
 $usuario = usuario_actual();
 $id = (int) ($_GET['id'] ?? 0);
-
-$stmt = bd()->prepare(
-    'SELECT l.*, c.title AS course_title, c.teacher_id, c.id AS course_id
-     FROM lessons l JOIN courses c ON c.id = l.course_id WHERE l.id = ?'
-);
-$stmt->execute([$id]);
-$lesson = $stmt->fetch();
+$lesson = $id ? obtener_leccion($id) : null;
 
 if (!$lesson) {
     mensaje_flash('danger', 'Lección no encontrada.');
@@ -76,9 +70,16 @@ if ($mostrarProgreso) {
     reiniciar_tiempo_video_leccion($id);
 }
 
-$siblings = bd()->prepare('SELECT id, title, sort_order FROM lessons WHERE course_id = ? ORDER BY sort_order, id');
-$siblings->execute([$idCurso]);
-$siblings = $siblings->fetchAll();
+$siblings = obtener_lecciones_curso($idCurso);
+$subcursosSidebar = obtener_subcursos_curso($idCurso);
+$mostrarSubcursosSidebar = count($subcursosSidebar) > 1;
+$leccionesPorSubcursoSidebar = [];
+foreach ($siblings as $sib) {
+    $sid = (int) ($sib['subcourse_id'] ?? 0);
+    if ($sid > 0) {
+        $leccionesPorSubcursoSidebar[$sid][] = $sib;
+    }
+}
 
 $prev = $next = null;
 foreach ($siblings as $i => $sib) {
@@ -111,23 +112,52 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php endif; ?>
             </div>
             <div class="list-group list-group-flush">
-                <?php foreach ($siblings as $i => $sib): ?>
-                    <?php $completada = in_array((int) $sib['id'], $idsCompletadas, true); ?>
-                    <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $sib['id'] ?>"
-                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
-                        <span>
-                            <span class="text-muted me-1"><?= $i + 1 ?>.</span>
-                            <?= escapar($sib['title']) ?>
-                        </span>
-                        <?php if ($mostrarProgreso): ?>
-                            <?php if ($completada): ?>
-                                <span class="badge bg-success"><i class="bi bi-check-lg"></i></span>
-                            <?php else: ?>
-                                <span class="badge bg-secondary">0%</span>
+                <?php if ($mostrarSubcursosSidebar): ?>
+                    <?php $numLeccionSidebar = 0; ?>
+                    <?php foreach ($subcursosSidebar as $subcursoSidebar): ?>
+                        <div class="list-group-item bg-light py-2 small fw-semibold text-muted">
+                            <?= escapar($subcursoSidebar['title']) ?>
+                        </div>
+                        <?php foreach ($leccionesPorSubcursoSidebar[(int) $subcursoSidebar['id']] ?? [] as $sib): ?>
+                            <?php
+                            $numLeccionSidebar++;
+                            $completada = in_array((int) $sib['id'], $idsCompletadas, true);
+                            ?>
+                            <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $sib['id'] ?>"
+                               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
+                                <span>
+                                    <span class="text-muted me-1"><?= $numLeccionSidebar ?>.</span>
+                                    <?= escapar($sib['title']) ?>
+                                </span>
+                                <?php if ($mostrarProgreso): ?>
+                                    <?php if ($completada): ?>
+                                        <span class="badge bg-success"><i class="bi bi-check-lg"></i></span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">0%</span>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </a>
+                        <?php endforeach; ?>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <?php foreach ($siblings as $i => $sib): ?>
+                        <?php $completada = in_array((int) $sib['id'], $idsCompletadas, true); ?>
+                        <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $sib['id'] ?>"
+                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
+                            <span>
+                                <span class="text-muted me-1"><?= $i + 1 ?>.</span>
+                                <?= escapar($sib['title']) ?>
+                            </span>
+                            <?php if ($mostrarProgreso): ?>
+                                <?php if ($completada): ?>
+                                    <span class="badge bg-success"><i class="bi bi-check-lg"></i></span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">0%</span>
+                                <?php endif; ?>
                             <?php endif; ?>
-                        <?php endif; ?>
-                    </a>
-                <?php endforeach; ?>
+                        </a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
         <a href="<?= URL_APP ?>/curso.php?id=<?= $idCurso ?>" class="btn btn-outline-secondary w-100 mt-3">
