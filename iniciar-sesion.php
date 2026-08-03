@@ -6,9 +6,11 @@ if (esta_logueado()) {
 }
 
 $error = '';
+$redirect = trim($_GET['redirect'] ?? $_POST['redirect'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificar_csrf();
+    $redirect = trim($_POST['redirect'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -23,6 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unset($usuario['password']);
             $_SESSION['usuario'] = $usuario;
             mensaje_flash('success', '¡Bienvenido/a, ' . $usuario['name'] . '!');
+            if ($redirect !== '' && strpos($redirect, URL_APP) === 0) {
+                redirigir($redirect);
+            }
             redirigir('panel.php');
         }
         $error = 'Correo o contraseña incorrectos.';
@@ -44,6 +49,9 @@ require_once __DIR__ . '/includes/encabezado.php';
         <?php endif; ?>
         <form method="post" novalidate>
             <?= campo_csrf() ?>
+            <?php if ($redirect !== ''): ?>
+                <input type="hidden" name="redirect" value="<?= escapar($redirect) ?>">
+            <?php endif; ?>
             <div class="mb-3">
                 <label class="form-label" for="email">Correo electrónico</label>
                 <input type="email" class="form-control" id="email" name="email" value="<?= escapar($_POST['email'] ?? '') ?>" required autofocus>

@@ -51,6 +51,7 @@ define('URL_PANEL', URL_APP . '/panel.php');
 define('URL_CURSOS', URL_APP . '/cursos.php');
 define('URL_CURSO', URL_APP . '/curso.php');
 define('URL_CURSO_FORMULARIO', URL_APP . '/curso-formulario.php');
+define('URL_INSCRIPCION_CURSO', URL_APP . '/inscripcion-curso.php');
 define('URL_CATALOGO', URL_APP . '/catalogo.php');
 define('URL_LECCION', URL_APP . '/leccion.php');
 define('URL_LECCION_FORMULARIO', URL_APP . '/leccion-formulario.php');

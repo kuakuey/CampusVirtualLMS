@@ -3,6 +3,15 @@ require_once __DIR__ . '/includes/funciones.php';
 requiere_sesion();
 
 $usuario = usuario_actual();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear_curso') {
+    verificar_csrf();
+    requiere_rol(['admin', 'teacher']);
+    $idNuevo = crear_curso_rapido($usuario);
+    mensaje_flash('success', 'Curso creado. Configúralo y añade contenido.');
+    redirigir('curso.php?id=' . $idNuevo);
+}
+
 $tituloPagina = 'Panel principal';
 
 $stats = [];
@@ -107,7 +116,11 @@ require_once __DIR__ . '/includes/encabezado.php';
         <?php if ($usuario['role'] === 'student'): ?>
             <a href="<?= URL_APP ?>/catalogo.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Explorar cursos</a>
         <?php elseif (in_array($usuario['role'], ['admin', 'teacher'], true)): ?>
-            <a href="<?= URL_APP ?>/curso-formulario.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo curso</a>
+            <form method="post" class="d-inline">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="accion" value="crear_curso">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo curso</button>
+            </form>
         <?php endif; ?>
     </div>
 </div>

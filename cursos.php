@@ -8,6 +8,14 @@ $buscar = trim($_GET['buscar'] ?? '');
 $estado = $_GET['estado'] ?? '';
 $idGrupo = (int) ($_GET['grupo'] ?? 0);
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear_curso') {
+    verificar_csrf();
+    requiere_rol(['admin', 'teacher']);
+    $idNuevo = crear_curso_rapido($usuario);
+    mensaje_flash('success', 'Curso creado. Configúralo y añade contenido.');
+    redirigir('curso.php?id=' . $idNuevo);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'eliminar_curso') {
     verificar_csrf();
     $idCurso = (int) ($_POST['id_curso'] ?? 0);
@@ -83,7 +91,11 @@ require_once __DIR__ . '/includes/encabezado.php';
             <a href="<?= URL_APP ?>/catalogo.php" class="btn btn-outline-primary"><i class="bi bi-grid me-1"></i> Catálogo</a>
         <?php endif; ?>
         <?php if (in_array($usuario['role'], ['admin', 'teacher'], true)): ?>
-            <a href="<?= URL_APP ?>/curso-formulario.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo curso</a>
+            <form method="post" class="d-inline">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="accion" value="crear_curso">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo curso</button>
+            </form>
         <?php endif; ?>
         <?php if ($usuario['role'] === 'admin'): ?>
             <a href="<?= URL_GRUPOS ?>" class="btn btn-outline-secondary"><i class="bi bi-collection me-1"></i> Grupos</a>

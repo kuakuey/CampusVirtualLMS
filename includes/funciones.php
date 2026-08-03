@@ -253,6 +253,118 @@ function marcar_leccion_completada(int $idLeccion, int $idEstudiante): bool
     return $consulta->execute([$idLeccion, $idEstudiante]);
 }
 
+function generar_token_inscripcion(): string
+{
+    return bin2hex(random_bytes(16));
+}
+
+function generar_codigo_curso_unico(): string
+{
+    do {
+        $codigo = 'CUR-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
+        $consulta = bd()->prepare('SELECT id FROM courses WHERE code = ? LIMIT 1');
+        $consulta->execute([$codigo]);
+    } while ($consulta->fetch());
+    return $codigo;
+}
+
+function resolver_docente_nuevo_curso(?array $usuario = null): int
+{
+    $usuario = $usuario ?? usuario_actual();
+    if ($usuario['role'] === 'teacher') {
+        return (int) $usuario['id'];
+    }
+    $consulta = bd()->query('SELECT id FROM users WHERE role = "teacher" AND status = 1 ORDER BY name LIMIT 1');
+    $docente = $consulta->fetch();
+    return $docente ? (int) $docente['id'] : (int) $usuario['id'];
+}
+
+function crear_curso_rapido(?array $usuario = null): int
+{
+    $usuario = $usuario ?? usuario_actual();
+    $docenteId = resolver_docente_nuevo_curso($usuario);
+    $codigo = generar_codigo_curso_unico();
+    $token = generar_token_inscripcion();
+    $consulta = bd()->prepare(
+        'INSERT INTO courses (teacher_id, title, code, status, enrollment_type, enrollment_token)
+         VALUES (?, ?, ?, ?, ?, ?)'
+    );
+    $consulta->execute([$docenteId, 'Nuevo curso', $codigo, 'draft', 'public', $token]);
+    return (int) bd()->lastInsertId();
+}
+
+function obtener_curso_por_token_inscripcion(string $token): ?array
+{
+    $token = trim($token);
+    if ($token === '') {
+        return null;
+    }
+    $consulta = bd()->prepare(
+        'SELECT c.*, cat.name AS category_name, g.name AS group_name, u.name AS teacher_name
+         FROM courses c
+         LEFT JOIN categories cat ON cat.id = c.category_id
+         LEFT JOIN course_groups g ON g.id = c.group_id
+         JOIN users u ON u.id = c.teacher_id
+         WHERE c.enrollment_token = ? LIMIT 1'
+    );
+    $consulta->execute([$token]);
+    $curso = $consulta->fetch();
+    return $curso ?: null;
+}
+
+function asegurar_token_inscripcion_curso(int $idCurso): string
+{
+    $consulta = bd()->prepare('SELECT enrollment_token FROM courses WHERE id = ?');
+    $consulta->execute([$idCurso]);
+    $token = $consulta->fetchColumn();
+    if ($token) {
+        return $token;
+    }
+    $token = generar_token_inscripcion();
+    $actualizar = bd()->prepare('UPDATE courses SET enrollment_token = ? WHERE id = ?');
+    $actualizar->execute([$token, $idCurso]);
+    return $token;
+}
+
+function url_inscripcion_curso(array $curso): string
+{
+    $token = $curso['enrollment_token'] ?? '';
+    if ($token === '') {
+        $token = asegurar_token_inscripcion_curso((int) $curso['id']);
+    }
+    return URL_INSCRIPCION_CURSO . '?token=' . urlencode($token);
+}
+
+function inscribir_estudiante_en_curso(int $idCurso, int $idEstudiante): bool
+{
+    $consulta = bd()->prepare(
+        'INSERT INTO enrollments (course_id, student_id, status) VALUES (?, ?, "active")
+         ON DUPLICATE KEY UPDATE status = "active"'
+    );
+    return $consulta->execute([$idCurso, $idEstudiante]);
+}
+
+function etiqueta_metodo_inscripcion(string $tipo): string
+{
+    switch ($tipo) {
+        case 'public': return 'Público';
+        case 'password': return 'Con contraseña';
+        case 'url': return 'Por URL';
+        default: return $tipo;
+    }
+}
+
+function insignia_metodo_inscripcion(string $tipo): string
+{
+    switch ($tipo) {
+        case 'public': $clase = 'bg-success'; break;
+        case 'password': $clase = 'bg-warning text-dark'; break;
+        case 'url': $clase = 'bg-info text-dark'; break;
+        default: $clase = 'bg-secondary';
+    }
+    return '<span class="badge ' . $clase . '">' . escapar(etiqueta_metodo_inscripcion($tipo)) . '</span>';
+}
+
 function reiniciar_tiempo_video_leccion(int $idLeccion): void
 {
     if (!isset($_SESSION['tiempo_video_leccion'])) {

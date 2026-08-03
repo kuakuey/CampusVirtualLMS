@@ -19,7 +19,7 @@ $sql = 'SELECT c.*, u.name AS teacher_name, cat.name AS category_name, g.name AS
         JOIN users u ON u.id = c.teacher_id
         LEFT JOIN categories cat ON cat.id = c.category_id
         LEFT JOIN course_groups g ON g.id = c.group_id
-        WHERE c.status = "published"';
+        WHERE c.status = "published" AND c.enrollment_type IN ("public", "password")';
 $params = [$usuario['id']];
 
 if ($buscar !== '') {
@@ -45,12 +45,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_curso_inscripcion'
     verificar_csrf();
     $idCurso = (int) $_POST['id_curso_inscripcion'];
     $curso = obtener_curso($idCurso);
-    if ($curso && $curso['status'] === 'published') {
+    if ($curso && $curso['status'] === 'published' && in_array($curso['enrollment_type'] ?? 'public', ['public', 'password'], true)) {
         if (esta_matriculado($idCurso)) {
             mensaje_flash('info', 'Ya estás inscrito en este curso.');
+        } elseif (($curso['enrollment_type'] ?? 'public') === 'password') {
+            $clave = trim($_POST['clave_inscripcion'] ?? '');
+            if ($clave === '' || empty($curso['enrollment_password']) || !password_verify($clave, $curso['enrollment_password'])) {
+                mensaje_flash('danger', 'Contraseña de inscripción incorrecta.');
+            } else {
+                inscribir_estudiante_en_curso($idCurso, (int) $usuario['id']);
+                mensaje_flash('success', 'Te has inscrito en «' . $curso['title'] . '».');
+            }
         } else {
-            $inscripcion = bd()->prepare('INSERT INTO enrollments (course_id, student_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE status = "active"');
-            $inscripcion->execute([$idCurso, $usuario['id']]);
+            inscribir_estudiante_en_curso($idCurso, (int) $usuario['id']);
             mensaje_flash('success', 'Te has inscrito en «' . $curso['title'] . '».');
         }
     } else {
@@ -116,6 +123,15 @@ require_once __DIR__ . '/includes/encabezado.php';
                 </div>
                 <?php if ($curso['enrolled']): ?>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-success w-100"><i class="bi bi-check2 me-1"></i> Ya inscrito · Abrir</a>
+                <?php elseif (($curso['enrollment_type'] ?? 'public') === 'password'): ?>
+                    <form method="post">
+                        <?= campo_csrf() ?>
+                        <input type="hidden" name="id_curso_inscripcion" value="<?= (int) $curso['id'] ?>">
+                        <div class="mb-2">
+                            <input type="password" name="clave_inscripcion" class="form-control form-control-sm" placeholder="Contraseña del curso" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-key me-1"></i> Inscribirme</button>
+                    </form>
                 <?php else: ?>
                     <form method="post">
                         <?= campo_csrf() ?>

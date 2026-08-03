@@ -265,6 +265,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
             <span class="badge text-bg-light border"><?= escapar($curso['code']) ?></span>
             <?= insignia_estado($curso['status']) ?>
+            <?= insignia_metodo_inscripcion($curso['enrollment_type'] ?? 'public') ?>
             <?php if ($curso['group_name']): ?><span class="badge bg-info text-dark"><?= escapar($curso['group_name']) ?></span><?php endif; ?>
             <?php if ($curso['category_name']): ?><span class="badge bg-secondary"><?= escapar($curso['category_name']) ?></span><?php endif; ?>
         </div>
@@ -292,6 +293,30 @@ require_once __DIR__ . '/includes/encabezado.php';
 <div class="panel mb-4">
     <div class="panel-body">
         <?= renderizar_vista_previa_documento($curso['document_path'], 'Material del curso') ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($esPropietario): ?>
+<div class="panel mb-4">
+    <div class="panel-body">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <span class="fw-semibold">Inscripción:</span>
+            <?= insignia_metodo_inscripcion($curso['enrollment_type'] ?? 'public') ?>
+            <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= $id ?>" class="btn btn-sm btn-outline-primary ms-auto">Configurar</a>
+        </div>
+        <?php if (($curso['enrollment_type'] ?? '') === 'url'): ?>
+            <?php $urlInscripcion = url_inscripcion_curso($curso); ?>
+            <label class="form-label small mb-1">Enlace de inscripción automática</label>
+            <div class="input-group input-group-sm">
+                <input type="text" class="form-control" value="<?= escapar($urlInscripcion) ?>" readonly id="url-inscripcion-curso">
+                <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('url-inscripcion-curso').value)"><i class="bi bi-clipboard"></i> Copiar</button>
+            </div>
+        <?php elseif (($curso['enrollment_type'] ?? '') === 'password'): ?>
+            <p class="small text-muted mb-0">Los estudiantes deben ingresar la contraseña en el catálogo para inscribirse.</p>
+        <?php else: ?>
+            <p class="small text-muted mb-0">Visible en el catálogo. Cualquier estudiante puede inscribirse.</p>
+        <?php endif; ?>
     </div>
 </div>
 <?php endif; ?>
