@@ -131,22 +131,23 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php endif; ?>
             </div>
             <?php if ($mostrarSubcursosSidebar): ?>
-            <ul class="nav nav-tabs flex-nowrap overflow-auto border-bottom-0 px-2 pt-2" role="tablist">
-                <?php foreach ($subcursosSidebar as $subcursoSidebar): ?>
-                    <?php
-                    $idSub = (int) $subcursoSidebar['id'];
-                    $leccionesTab = $leccionesPorSubcursoSidebar[$idSub] ?? [];
-                    $urlTab = $leccionesTab
-                        ? URL_APP . '/leccion.php?id=' . (int) $leccionesTab[0]['id']
-                        : URL_APP . '/curso.php?id=' . $idCurso . '&pestaña=lecciones&modulo=' . $idSub;
-                    ?>
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link small py-2 <?= $idModuloLeccion === $idSub ? 'active' : '' ?>" href="<?= escapar($urlTab) ?>">
+            <div class="px-2 pt-2 pb-2 border-bottom lesson-materia-field">
+                <label class="form-label small fw-semibold mb-1" for="selector-materia-leccion">Materia</label>
+                <select id="selector-materia-leccion" class="form-select form-select-sm course-materia-select">
+                    <?php foreach ($subcursosSidebar as $subcursoSidebar): ?>
+                        <?php
+                        $idSub = (int) $subcursoSidebar['id'];
+                        $leccionesTab = $leccionesPorSubcursoSidebar[$idSub] ?? [];
+                        $urlMateria = $leccionesTab
+                            ? URL_APP . '/leccion.php?id=' . (int) $leccionesTab[0]['id']
+                            : URL_APP . '/curso.php?id=' . $idCurso . '&pestaña=lecciones&modulo=' . $idSub;
+                        ?>
+                        <option value="<?= $idSub ?>" data-url="<?= escapar($urlMateria) ?>" <?= $idModuloLeccion === $idSub ? 'selected' : '' ?>>
                             <?= escapar($subcursoSidebar['title']) ?>
-                        </a>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <?php endif; ?>
             <div class="list-group list-group-flush">
                 <?php if ($mostrarSubcursosSidebar): ?>
@@ -310,5 +311,8 @@ require_once __DIR__ . '/includes/encabezado.php';
     <script src="<?= URL_APP ?>/assets/js/leccion-progreso.js"></script>
 <?php endif; ?>
 <script src="<?= URL_APP ?>/assets/js/leccion-sidebar.js"></script>
+<?php if ($mostrarSubcursosSidebar): ?>
+<script src="<?= URL_APP ?>/assets/js/materia-select.js"></script>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/includes/pie.php'; ?>

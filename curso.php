@@ -474,7 +474,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?php if ($mostrarSubcursos): ?>
                     <div class="mb-3 course-materia-field">
                         <label class="form-label fw-semibold mb-1" for="selector-materia">Materia</label>
-                        <select id="selector-materia" class="form-select course-materia-select">
+                        <select id="selector-materia" class="form-select course-materia-select" data-course-id="<?= $id ?>">
                             <?php foreach ($subcursos as $subcurso): ?>
                                 <?php $idSub = (int) $subcurso['id']; ?>
                                 <option value="<?= $idSub ?>" <?= $idModuloActivo === $idSub ? 'selected' : '' ?>>
@@ -636,7 +636,7 @@ require_once __DIR__ . '/includes/encabezado.php';
 <script src="<?= URL_APP ?>/assets/js/lecciones-orden.js"></script>
 <?php endif; ?>
 <?php if ($mostrarSubcursos): ?>
-<script src="<?= URL_APP ?>/assets/js/curso-materia.js"></script>
+<script src="<?= URL_APP ?>/assets/js/materia-select.js"></script>
 <?php endif; ?>
 
 <?php elseif ($pestaña === 'tareas'): ?>

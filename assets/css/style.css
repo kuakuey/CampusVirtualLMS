@@ -538,6 +538,11 @@ body.lesson-sidebar-open .lesson-sidebar-fab {
         padding-top: 0;
         margin-top: 0;
     }
+
+    .lesson-sidebar-drawer .lesson-materia-field {
+        padding-left: 0;
+        padding-right: 0;
+    }
 }
 
 @media (min-width: 992px) {
