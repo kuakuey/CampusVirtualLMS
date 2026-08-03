@@ -82,13 +82,19 @@ foreach ($siblings as $sib) {
 }
 
 $prev = $next = null;
-foreach ($siblings as $i => $sib) {
+$idModuloLeccion = (int) ($lesson['subcourse_id'] ?? 0);
+$leccionesModuloActual = $mostrarSubcursosSidebar
+    ? ($leccionesPorSubcursoSidebar[$idModuloLeccion] ?? [])
+    : $siblings;
+foreach ($leccionesModuloActual as $i => $sib) {
     if ((int) $sib['id'] === $id) {
-        $prev = $siblings[$i - 1] ?? null;
-        $next = $siblings[$i + 1] ?? null;
+        $prev = $leccionesModuloActual[$i - 1] ?? null;
+        $next = $leccionesModuloActual[$i + 1] ?? null;
         break;
     }
 }
+$urlVolverCurso = URL_APP . '/curso.php?id=' . $idCurso . '&pestaña=lecciones'
+    . ($mostrarSubcursosSidebar && $idModuloLeccion > 0 ? '&modulo=' . $idModuloLeccion : '');
 
 $tituloPagina = $lesson['title'];
 require_once __DIR__ . '/includes/encabezado.php';
@@ -111,22 +117,35 @@ require_once __DIR__ . '/includes/encabezado.php';
                     </div>
                 <?php endif; ?>
             </div>
+            <?php if ($mostrarSubcursosSidebar): ?>
+            <ul class="nav nav-tabs flex-nowrap overflow-auto border-bottom-0 px-2 pt-2" role="tablist">
+                <?php foreach ($subcursosSidebar as $subcursoSidebar): ?>
+                    <?php
+                    $idSub = (int) $subcursoSidebar['id'];
+                    $leccionesTab = $leccionesPorSubcursoSidebar[$idSub] ?? [];
+                    $urlTab = $leccionesTab
+                        ? URL_APP . '/leccion.php?id=' . (int) $leccionesTab[0]['id']
+                        : URL_APP . '/curso.php?id=' . $idCurso . '&pestaña=lecciones&modulo=' . $idSub;
+                    ?>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link small py-2 <?= $idModuloLeccion === $idSub ? 'active' : '' ?>" href="<?= escapar($urlTab) ?>">
+                            <?= escapar($subcursoSidebar['title']) ?>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+            <?php endif; ?>
             <div class="list-group list-group-flush">
                 <?php if ($mostrarSubcursosSidebar): ?>
-                    <?php $numLeccionSidebar = 0; ?>
-                    <?php foreach ($subcursosSidebar as $subcursoSidebar): ?>
-                        <div class="list-group-item bg-light py-2 small fw-semibold text-muted">
-                            <?= escapar($subcursoSidebar['title']) ?>
-                        </div>
-                        <?php foreach ($leccionesPorSubcursoSidebar[(int) $subcursoSidebar['id']] ?? [] as $sib): ?>
-                            <?php
-                            $numLeccionSidebar++;
-                            $completada = in_array((int) $sib['id'], $idsCompletadas, true);
-                            ?>
+                    <?php if (!$leccionesModuloActual): ?>
+                        <div class="list-group-item small text-muted">Sin lecciones en este módulo.</div>
+                    <?php else: ?>
+                        <?php foreach ($leccionesModuloActual as $i => $sib): ?>
+                            <?php $completada = in_array((int) $sib['id'], $idsCompletadas, true); ?>
                             <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $sib['id'] ?>"
                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
                                 <span>
-                                    <span class="text-muted me-1"><?= $numLeccionSidebar ?>.</span>
+                                    <span class="text-muted me-1"><?= $i + 1 ?>.</span>
                                     <?= escapar($sib['title']) ?>
                                 </span>
                                 <?php if ($mostrarProgreso): ?>
@@ -138,7 +157,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                                 <?php endif; ?>
                             </a>
                         <?php endforeach; ?>
-                    <?php endforeach; ?>
+                    <?php endif; ?>
                 <?php else: ?>
                     <?php foreach ($siblings as $i => $sib): ?>
                         <?php $completada = in_array((int) $sib['id'], $idsCompletadas, true); ?>
@@ -160,7 +179,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php endif; ?>
             </div>
         </div>
-        <a href="<?= URL_APP ?>/curso.php?id=<?= $idCurso ?>" class="btn btn-outline-secondary w-100 mt-3">
+        <a href="<?= escapar($urlVolverCurso) ?>" class="btn btn-outline-secondary w-100 mt-3">
             <i class="bi bi-arrow-left me-1"></i> Volver al curso
         </a>
     </div>
