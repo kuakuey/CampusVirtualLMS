@@ -254,6 +254,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
             <span class="badge text-bg-light border"><?= escapar($curso['code']) ?></span>
             <?= insignia_estado($curso['status']) ?>
+            <?php if ($curso['group_name']): ?><span class="badge bg-info text-dark"><?= escapar($curso['group_name']) ?></span><?php endif; ?>
             <?php if ($curso['category_name']): ?><span class="badge bg-secondary"><?= escapar($curso['category_name']) ?></span><?php endif; ?>
         </div>
         <h1><?= escapar($curso['title']) ?></h1>
@@ -264,8 +265,8 @@ require_once __DIR__ . '/includes/encabezado.php';
             <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= $id ?>" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
             <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este curso y todo su contenido?');">
                 <?= campo_csrf() ?>
-                <input type="hidden" name="accion" value="delete_course">
-                <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
+                <input type="hidden" name="accion" value="eliminar_curso">
+                <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash me-1"></i> Eliminar</button>
             </form>
         <?php endif; ?>
         <a href="<?= URL_APP ?>/cursos.php" class="btn btn-outline-secondary">Volver</a>
@@ -316,7 +317,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                                 <?php if ($esPropietario): ?>
                                 <form method="post" onsubmit="return confirm('¿Eliminar lección?');">
                                     <?= campo_csrf() ?>
-                                    <input type="hidden" name="accion" value="delete_lesson">
+                                    <input type="hidden" name="accion" value="eliminar_leccion">
                                     <input type="hidden" name="lesson_id" value="<?= (int) $lesson['id'] ?>">
                                     <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -335,7 +336,7 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="panel-body">
                 <form method="post">
                     <?= campo_csrf() ?>
-                    <input type="hidden" name="accion" value="add_lesson">
+                    <input type="hidden" name="accion" value="agregar_leccion">
                     <div class="mb-3">
                         <label class="form-label">Título</label>
                         <input type="text" name="title" class="form-control" required>
@@ -383,7 +384,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                                 <?php if ($esPropietario): ?>
                                 <form method="post" onsubmit="return confirm('¿Eliminar tarea?');">
                                     <?= campo_csrf() ?>
-                                    <input type="hidden" name="accion" value="delete_assignment">
+                                    <input type="hidden" name="accion" value="eliminar_tarea">
                                     <input type="hidden" name="assignment_id" value="<?= (int) $asg['id'] ?>">
                                     <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -401,7 +402,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                                 <?php endif; ?>
                                 <form method="post" enctype="multipart/form-data" class="border-top pt-3 mt-1">
                                     <?= campo_csrf() ?>
-                                    <input type="hidden" name="accion" value="submit_assignment">
+                                    <input type="hidden" name="accion" value="entregar_tarea">
                                     <input type="hidden" name="assignment_id" value="<?= (int) $asg['id'] ?>">
                                     <div class="mb-2">
                                         <label class="form-label small">Tu respuesta</label>
@@ -446,7 +447,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?php endif; ?>
                     <form method="post" class="row g-2 mt-2 align-items-end">
                         <?= campo_csrf() ?>
-                        <input type="hidden" name="accion" value="grade_submission">
+                        <input type="hidden" name="accion" value="calificar_entrega">
                         <input type="hidden" name="submission_id" value="<?= (int) $sub['id'] ?>">
                         <div class="col-md-3">
                             <label class="form-label small">Nota (máx <?= escapar($sub['max_score']) ?>)</label>
@@ -474,7 +475,7 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="panel-body">
                 <form method="post">
                     <?= campo_csrf() ?>
-                    <input type="hidden" name="accion" value="add_assignment">
+                    <input type="hidden" name="accion" value="agregar_tarea">
                     <div class="mb-3">
                         <label class="form-label">Título</label>
                         <input type="text" name="title" class="form-control" required>
@@ -525,7 +526,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?php endforeach; ?>
                     <form method="post" class="mt-3">
                         <?= campo_csrf() ?>
-                        <input type="hidden" name="accion" value="add_reply">
+                        <input type="hidden" name="accion" value="agregar_respuesta">
                         <input type="hidden" name="topic_id" value="<?= (int) $currentTopic['id'] ?>">
                         <label class="form-label">Tu respuesta</label>
                         <textarea name="body" class="form-control mb-2" rows="3" required></textarea>
@@ -560,7 +561,7 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="panel-body">
                 <form method="post">
                     <?= campo_csrf() ?>
-                    <input type="hidden" name="accion" value="add_topic">
+                    <input type="hidden" name="accion" value="agregar_tema">
                     <div class="mb-3">
                         <label class="form-label">Título</label>
                         <input type="text" name="title" class="form-control" required>

@@ -14,6 +14,7 @@ if ($curso && $usuario['role'] === 'teacher' && (int) $curso['teacher_id'] !== (
 }
 
 $categories = bd()->query('SELECT * FROM categories ORDER BY name')->fetchAll();
+$grupos = bd()->query('SELECT * FROM course_groups ORDER BY sort_order, name')->fetchAll();
 $teachers = [];
 if ($usuario['role'] === 'admin') {
     $teachers = bd()->query('SELECT id, name FROM users WHERE role = "teacher" AND status = 1 ORDER BY name')->fetchAll();
@@ -27,12 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $code = strtoupper(trim($_POST['code'] ?? ''));
     $description = trim($_POST['description'] ?? '');
     $idCategoria = (int) ($_POST['category_id'] ?? 0) ?: null;
-    $estado = $_POST['status'] ?? 'draft';
+    $idGrupo = (int) ($_POST['group_id'] ?? 0) ?: null;
+    $estado = $_POST['estado'] ?? 'draft';
     $teacherId = $usuario['role'] === 'admin' ? (int) ($_POST['teacher_id'] ?? 0) : (int) $usuario['id'];
 
     if ($title === '') $errors[] = 'El título es obligatorio.';
     if ($code === '') $errors[] = 'El código es obligatorio.';
-    if (!in_array($status, ['draft', 'published', 'archived'], true)) $estado = 'draft';
+    if (!in_array($estado, ['draft', 'published', 'archived'], true)) $estado = 'draft';
     if ($usuario['role'] === 'admin' && $teacherId <= 0) $errors[] = 'Selecciona un docente.';
 
     if (!$errors) {
@@ -45,12 +47,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$errors) {
         if ($curso) {
-            $stmt = bd()->prepare('UPDATE courses SET category_id=?, teacher_id=?, title=?, code=?, description=?, status=? WHERE id=?');
-            $stmt->execute([$idCategoria, $teacherId, $title, $code, $description, $status, $id]);
+            $stmt = bd()->prepare('UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, status=? WHERE id=?');
+            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $id]);
             mensaje_flash('success', 'Curso actualizado.');
         } else {
-            $stmt = bd()->prepare('INSERT INTO courses (category_id, teacher_id, title, code, description, status) VALUES (?,?,?,?,?,?)');
-            $stmt->execute([$idCategoria, $teacherId, $title, $code, $description, $status]);
+            $stmt = bd()->prepare('INSERT INTO courses (category_id, group_id, teacher_id, title, code, description, status) VALUES (?,?,?,?,?,?,?)');
+            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado]);
             $id = (int) bd()->lastInsertId();
             mensaje_flash('success', 'Curso creado correctamente.');
         }
@@ -58,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 } else {
     $_POST = $curso ?: [
-        'title' => '', 'code' => '', 'description' => '', 'category_id' => '', 'status' => 'draft', 'teacher_id' => $usuario['id']
+        'title' => '', 'code' => '', 'description' => '', 'category_id' => '', 'group_id' => '', 'status' => 'draft', 'teacher_id' => $usuario['id']
     ];
 }
 
@@ -94,6 +96,18 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <textarea name="description" class="form-control" rows="4"><?= escapar($_POST['description'] ?? '') ?></textarea>
                 </div>
                 <div class="col-md-6">
+                    <label class="form-label">Grupo de cursos</label>
+                    <select name="group_id" class="form-select">
+                        <option value="">Sin grupo</option>
+                        <?php foreach ($grupos as $grupo): ?>
+                            <option value="<?= (int) $grupo['id'] ?>" <?= (int) ($_POST['group_id'] ?? 0) === (int) $grupo['id'] ? 'selected' : '' ?>><?= escapar($grupo['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if ($usuario['role'] === 'admin' && !$grupos): ?>
+                        <small class="text-muted">Crea grupos en <a href="<?= URL_GRUPOS ?>">Administración → Grupos de cursos</a>.</small>
+                    <?php endif; ?>
+                </div>
+                <div class="col-md-6">
                     <label class="form-label">Categoría</label>
                     <select name="category_id" class="form-select">
                         <option value="">Sin categoría</option>
@@ -106,12 +120,12 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <label class="form-label">Estado</label>
                     <select name="estado" class="form-select">
                         <?php foreach (['draft' => 'Borrador', 'published' => 'Publicado', 'archived' => 'Archivado'] as $k => $v): ?>
-                            <option value="<?= $k ?>" <?= ($_POST['status'] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option>
+                            <option value="<?= $k ?>" <?= ($_POST['status'] ?? $_POST['estado'] ?? 'draft') === $k ? 'selected' : '' ?>><?= $v ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <?php if ($usuario['role'] === 'admin'): ?>
-                <div class="col-12">
+                <div class="col-md-6">
                     <label class="form-label">Docente</label>
                     <select name="teacher_id" class="form-select" required>
                         <option value="">Seleccionar...</option>

@@ -6,7 +6,7 @@ class GestorBd
     private const RUTA_MIGRACIONES = RUTA_BASE . '/sql/migrations';
 
     private const TABLAS_APP = [
-        'users', 'categories', 'courses', 'enrollments', 'lessons',
+        'users', 'categories', 'course_groups', 'courses', 'enrollments', 'lessons',
         'assignments', 'submissions', 'grades',
         'forum_topics', 'forum_replies',
     ];
