@@ -86,7 +86,6 @@ foreach ($siblings as $i => $sib) {
     }
 }
 
-$porcentajeLeccion = $leccionCompletada ? 100 : 0;
 $tituloPagina = $lesson['title'];
 require_once __DIR__ . '/includes/encabezado.php';
 ?>
@@ -134,23 +133,12 @@ require_once __DIR__ . '/includes/encabezado.php';
     </div>
     <div class="col-lg-9">
         <div class="panel">
+            <?php if ($esPropietario): ?>
             <div class="panel-header">
-                <div>
-                    <h2 class="mb-1"><?= escapar($lesson['title']) ?></h2>
-                    <?php if ($mostrarProgreso): ?>
-                        <p class="subtitle mb-0 small">
-                            Progreso de esta lección:
-                            <strong id="leccion-porcentaje-texto"><?= $porcentajeLeccion ?>%</strong>
-                            <?php if ($leccionCompletada): ?>
-                                <span class="badge bg-success ms-1"><i class="bi bi-check-circle me-1"></i>Completada</span>
-                            <?php endif; ?>
-                        </p>
-                    <?php endif; ?>
-                </div>
-                <?php if ($esPropietario): ?>
-                    <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= $id ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
-                <?php endif; ?>
+                <h2 class="mb-0"><?= escapar($lesson['title']) ?></h2>
+                <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= $id ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
             </div>
+            <?php endif; ?>
             <div class="panel-body">
                 <?php if ($mostrarProgreso && !$leccionCompletada && in_array($tipoVideo, ['youtube', 'html5'], true)): ?>
                     <div id="lesson-progress" class="lesson-progress-box mb-4"
@@ -161,24 +149,31 @@ require_once __DIR__ . '/includes/encabezado.php';
                          data-completada="0"
                          data-csrf="<?= escapar(token_csrf()) ?>"
                          data-url="<?= escapar(URL_APP . '/leccion.php?id=' . $id) ?>">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                            <span class="small fw-semibold"><i class="bi bi-play-circle me-1"></i>Tiempo de video en esta sesión</span>
-                            <span class="small" id="video-tiempo-texto">0:00 / 10:00</span>
+                        <div class="lesson-progress-row">
+                            <div class="lesson-progress-time">
+                                <span class="lesson-progress-label">Tiempo de video</span>
+                                <span class="lesson-progress-value" id="video-tiempo-texto">0:00 / 10:00</span>
+                                <div class="progress lesson-progress-bar">
+                                    <div id="video-tiempo-barra" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-marcar-completada" class="btn btn-success" disabled>
+                                <i class="bi bi-check2-circle me-1"></i> Marcar como completada
+                            </button>
                         </div>
-                        <div class="progress mb-3" style="height: 8px;">
-                            <div id="video-tiempo-barra" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <p class="small text-muted mb-2">El contador solo avanza mientras el video se reproduce. Si sales de la lección, se reinicia.</p>
-                        <button type="button" id="btn-marcar-completada" class="btn btn-success btn-sm" disabled>
-                            <i class="bi bi-check2-circle me-1"></i> Marcar como completada
-                        </button>
                     </div>
                 <?php elseif ($mostrarProgreso && $leccionCompletada): ?>
                     <div id="lesson-progress" class="lesson-progress-box mb-4 lesson-progress-done"
                          data-completada="1"
                          data-video-type="<?= escapar($tipoVideo) ?>">
-                        <div class="alert alert-success mb-0 py-2">
-                            <i class="bi bi-check-circle-fill me-1"></i> Has completado esta lección.
+                        <div class="lesson-progress-row">
+                            <div class="lesson-progress-time">
+                                <span class="lesson-progress-label">Tiempo de video</span>
+                                <span class="lesson-progress-value text-success"><i class="bi bi-check-circle-fill me-1"></i>Lección completada</span>
+                            </div>
+                            <button type="button" class="btn btn-success" disabled>
+                                <i class="bi bi-check2-circle me-1"></i> Completada
+                            </button>
                         </div>
                     </div>
                 <?php elseif ($mostrarProgreso && $tipoVideo === 'externo'): ?>

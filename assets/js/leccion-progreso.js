@@ -12,7 +12,6 @@
 
     const elTiempo = document.getElementById('video-tiempo-texto');
     const elBarra = document.getElementById('video-tiempo-barra');
-    const elPorcentaje = document.getElementById('leccion-porcentaje-texto');
     const btnCompletar = document.getElementById('btn-marcar-completada');
 
     let segundosSesion = 0;
@@ -37,9 +36,6 @@
         if (elBarra) {
             elBarra.style.width = porcentajeSesion() + '%';
             elBarra.setAttribute('aria-valuenow', String(porcentajeSesion()));
-        }
-        if (elPorcentaje && !yaCompletada) {
-            elPorcentaje.textContent = porcentajeSesion() + '%';
         }
         if (btnCompletar && !yaCompletada) {
             btnCompletar.disabled = !puedeCompletar;
