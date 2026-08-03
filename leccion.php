@@ -84,9 +84,11 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php if (!empty($lesson['attachment'])): ?>
                     <?= renderizar_vista_previa_documento($lesson['attachment'], 'Documento de la lección') ?>
                 <?php endif; ?>
+                <?php if (trim($lesson['content'] ?? '') !== ''): ?>
                 <div class="content-html">
-                    <?= $lesson['content'] ?: '<p class="text-muted">Sin contenido.</p>' ?>
+                    <?= $lesson['content'] ?>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
         <div class="d-flex justify-content-between mt-3">
