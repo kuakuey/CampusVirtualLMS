@@ -43,8 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $video = trim($_POST['video_url'] ?? '');
         $order = (int) ($_POST['sort_order'] ?? 0);
         if ($title !== '') {
-            $stmt = bd()->prepare('INSERT INTO lessons (course_id, title, content, video_url, sort_order) VALUES (?,?,?,?,?)');
-            $stmt->execute([$id, $title, $content, $video ?: null, $order]);
+            $adjunto = !empty($_FILES['documento']['name']) ? subir_archivo($_FILES['documento'], 'lecciones') : null;
+            $stmt = bd()->prepare('INSERT INTO lessons (course_id, title, content, video_url, sort_order, attachment) VALUES (?,?,?,?,?,?)');
+            $stmt->execute([$id, $title, $content, $video ?: null, $order, $adjunto]);
             mensaje_flash('success', 'Lección creada.');
         }
         redirigir("curso.php?id=$id&pestaña=lecciones");
@@ -52,6 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($accion === 'eliminar_leccion' && $esPropietario) {
         $lessonId = (int) ($_POST['lesson_id'] ?? 0);
+        $consulta = bd()->prepare('SELECT attachment FROM lessons WHERE id = ? AND course_id = ?');
+        $consulta->execute([$lessonId, $id]);
+        if ($fila = $consulta->fetch()) {
+            eliminar_archivo_subida($fila['attachment'] ?? null);
+        }
         $stmt = bd()->prepare('DELETE FROM lessons WHERE id = ? AND course_id = ?');
         $stmt->execute([$lessonId, $id]);
         mensaje_flash('success', 'Lección eliminada.');
@@ -160,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($accion === 'eliminar_curso' && $esPropietario) {
+        limpiar_archivos_curso($id);
         $stmt = bd()->prepare('DELETE FROM courses WHERE id = ?');
         $stmt->execute([$id]);
         mensaje_flash('success', 'Curso eliminado.');
@@ -277,6 +284,14 @@ require_once __DIR__ . '/includes/encabezado.php';
 <div class="panel mb-4"><div class="panel-body"><?= nl2br(escapar($curso['description'])) ?></div></div>
 <?php endif; ?>
 
+<?php if (!empty($curso['document_path'])): ?>
+<div class="panel mb-4">
+    <div class="panel-body">
+        <?= renderizar_vista_previa_documento($curso['document_path'], 'Material del curso') ?>
+    </div>
+</div>
+<?php endif; ?>
+
 <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
     <?php
     $pestañas = [
@@ -311,6 +326,9 @@ require_once __DIR__ . '/includes/encabezado.php';
                             <div>
                                 <span class="badge bg-light text-dark border me-2"><?= $i + 1 ?></span>
                                 <strong><?= escapar($lesson['title']) ?></strong>
+                                <?php if (!empty($lesson['attachment'])): ?>
+                                    <span class="badge bg-light text-dark border ms-1"><i class="bi bi-paperclip"></i> Documento</span>
+                                <?php endif; ?>
                             </div>
                             <div class="d-flex gap-2">
                                 <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-primary">Ver</a>
@@ -334,7 +352,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <div class="panel">
             <div class="panel-header"><h2>Nueva lección</h2></div>
             <div class="panel-body">
-                <form method="post">
+                <form method="post" enctype="multipart/form-data">
                     <?= campo_csrf() ?>
                     <input type="hidden" name="accion" value="agregar_leccion">
                     <div class="mb-3">
@@ -348,6 +366,11 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <div class="mb-3">
                         <label class="form-label">URL de video (opcional)</label>
                         <input type="url" name="video_url" class="form-control" placeholder="https://...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Documento (opcional)</label>
+                        <input type="file" name="documento" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt">
+                        <small class="text-muted">PDF, Word, Excel, PowerPoint, imágenes o texto. Se podrá previsualizar al abrir la lección.</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Orden</label>

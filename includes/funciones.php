@@ -187,7 +187,7 @@ function subir_archivo(array $archivo, string $subcarpeta = 'archivos'): ?string
         mkdir($directorio, 0755, true);
     }
     $extension = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
-    $permitidas = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'txt'];
+    $permitidas = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'txt', 'zip'];
     if (!in_array($extension, $permitidas, true)) {
         return null;
     }
@@ -197,4 +197,73 @@ function subir_archivo(array $archivo, string $subcarpeta = 'archivos'): ?string
         return null;
     }
     return $subcarpeta . '/' . $nombreArchivo;
+}
+
+function eliminar_archivo_subida(?string $rutaRelativa): void
+{
+    if (!$rutaRelativa) {
+        return;
+    }
+    $ruta = RUTA_SUBIDAS . '/' . ltrim($rutaRelativa, '/');
+    if (is_file($ruta)) {
+        @unlink($ruta);
+    }
+}
+
+function url_documento_publico(string $rutaRelativa): string
+{
+    return URL_SUBIDAS . '/' . ltrim($rutaRelativa, '/');
+}
+
+function limpiar_archivos_curso(int $idCurso): void
+{
+    $curso = obtener_curso($idCurso);
+    if ($curso && !empty($curso['document_path'])) {
+        eliminar_archivo_subida($curso['document_path']);
+    }
+    $consulta = bd()->prepare('SELECT attachment FROM lessons WHERE course_id = ? AND attachment IS NOT NULL AND attachment != ""');
+    $consulta->execute([$idCurso]);
+    foreach ($consulta->fetchAll() as $fila) {
+        eliminar_archivo_subida($fila['attachment']);
+    }
+}
+
+function renderizar_vista_previa_documento(?string $rutaRelativa, string $titulo = 'Documento adjunto'): string
+{
+    if (!$rutaRelativa) {
+        return '';
+    }
+
+    $url = url_documento_publico($rutaRelativa);
+    $extension = strtolower(pathinfo($rutaRelativa, PATHINFO_EXTENSION));
+    $nombre = basename($rutaRelativa);
+
+    $html = '<div class="doc-preview-panel mb-4">';
+    $html .= '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">';
+    $html .= '<h3 class="h6 mb-0"><i class="bi bi-file-earmark-text me-1"></i>' . escapar($titulo) . '</h3>';
+    $html .= '<a href="' . escapar($url) . '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-download me-1"></i>Descargar</a>';
+    $html .= '</div>';
+
+    if (in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
+        $html .= '<img src="' . escapar($url) . '" class="doc-preview-image img-fluid rounded border" alt="' . escapar($nombre) . '">';
+    } elseif ($extension === 'pdf') {
+        $html .= '<div class="doc-preview-frame ratio ratio-4x3 rounded overflow-hidden border"><iframe src="' . escapar($url) . '#navpanes=0" title="' . escapar($titulo) . '"></iframe></div>';
+    } elseif ($extension === 'txt') {
+        $rutaLocal = RUTA_SUBIDAS . '/' . ltrim($rutaRelativa, '/');
+        $texto = (is_file($rutaLocal) && filesize($rutaLocal) <= 512000) ? file_get_contents($rutaLocal) : false;
+        if ($texto !== false && $texto !== '') {
+            $html .= '<pre class="doc-preview-text p-3 bg-light border rounded mb-0">' . escapar($texto) . '</pre>';
+        } else {
+            $html .= '<p class="text-muted small mb-0">Archivo de texto disponible para descarga.</p>';
+        }
+    } elseif (in_array($extension, ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'], true)) {
+        $embed = 'https://view.officeapps.live.com/op/embed.aspx?src=' . rawurlencode($url);
+        $html .= '<div class="doc-preview-frame ratio ratio-4x3 rounded overflow-hidden border"><iframe src="' . escapar($embed) . '" title="' . escapar($titulo) . '"></iframe></div>';
+        $html .= '<p class="small text-muted mt-2 mb-0">Si la vista previa no carga, usa el botón Descargar.</p>';
+    } else {
+        $html .= '<div class="alert alert-light border mb-0"><i class="bi bi-file-earmark me-1"></i>' . escapar($nombre) . ' — descarga el archivo para abrirlo.</div>';
+    }
+
+    $html .= '</div>';
+    return $html;
 }

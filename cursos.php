@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'elimi
         || ($usuario['role'] === 'teacher' && (int) $cursoEliminar['teacher_id'] === (int) $usuario['id'])
     );
     if ($puedeEliminar) {
+        limpiar_archivos_curso($idCurso);
         $consulta = bd()->prepare('DELETE FROM courses WHERE id = ?');
         $consulta->execute([$idCurso]);
         mensaje_flash('success', 'Curso «' . $cursoEliminar['title'] . '» eliminado.');

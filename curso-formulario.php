@@ -46,13 +46,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
+        $rutaDocumento = $curso['document_path'] ?? null;
+        if (!empty($_POST['quitar_documento'])) {
+            eliminar_archivo_subida($rutaDocumento);
+            $rutaDocumento = null;
+        }
+        if (!empty($_FILES['documento']['name'])) {
+            eliminar_archivo_subida($rutaDocumento);
+            $rutaDocumento = subir_archivo($_FILES['documento'], 'cursos');
+            if ($rutaDocumento === null) {
+                $errors[] = 'No se pudo subir el documento. Verifica el formato (PDF, Word, Excel, PowerPoint, imágenes o texto).';
+            }
+        }
+    }
+
+    if (!$errors) {
         if ($curso) {
-            $stmt = bd()->prepare('UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, status=? WHERE id=?');
-            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $id]);
+            $stmt = bd()->prepare('UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, document_path=?, status=? WHERE id=?');
+            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $rutaDocumento, $estado, $id]);
             mensaje_flash('success', 'Curso actualizado.');
         } else {
-            $stmt = bd()->prepare('INSERT INTO courses (category_id, group_id, teacher_id, title, code, description, status) VALUES (?,?,?,?,?,?,?)');
-            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado]);
+            $stmt = bd()->prepare('INSERT INTO courses (category_id, group_id, teacher_id, title, code, description, document_path, status) VALUES (?,?,?,?,?,?,?,?)');
+            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $rutaDocumento, $estado]);
             $id = (int) bd()->lastInsertId();
             mensaje_flash('success', 'Curso creado correctamente.');
         }
@@ -80,7 +95,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <?php if ($errors): ?>
             <div class="alert alert-danger"><ul class="mb-0 ps-3"><?php foreach ($errors as $err): ?><li><?= escapar($err) ?></li><?php endforeach; ?></ul></div>
         <?php endif; ?>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             <?= campo_csrf() ?>
             <div class="row g-3">
                 <div class="col-md-8">
@@ -94,6 +109,20 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <div class="col-12">
                     <label class="form-label">Descripción</label>
                     <textarea name="description" class="form-control" rows="4"><?= escapar($_POST['description'] ?? '') ?></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Documento (opcional)</label>
+                    <input type="file" name="documento" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt">
+                    <small class="text-muted">PDF, Word, Excel, PowerPoint, imágenes o texto. Los estudiantes podrán previsualizarlo en el curso.</small>
+                    <?php if (!empty($curso['document_path'])): ?>
+                        <div class="mt-3">
+                            <?= renderizar_vista_previa_documento($curso['document_path'], 'Documento actual') ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="quitar_documento" value="1" id="quitar_documento">
+                                <label class="form-check-label" for="quitar_documento">Quitar documento actual</label>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Grupo de cursos</label>
