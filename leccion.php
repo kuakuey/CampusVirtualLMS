@@ -24,9 +24,57 @@ if (!$curso || !puede_acceder_curso($curso)) {
 }
 
 $esPropietario = es_propietario_curso($curso, $usuario);
+$idCurso = (int) $lesson['course_id'];
+$mostrarProgreso = $usuario['role'] === 'student' && esta_matriculado($idCurso);
+$leccionCompletada = $mostrarProgreso && leccion_esta_completada($id, (int) $usuario['id']);
+$progresoCurso = $mostrarProgreso ? porcentaje_progreso_curso($idCurso, (int) $usuario['id']) : 0;
+$idsCompletadas = $mostrarProgreso ? obtener_ids_lecciones_completadas($idCurso, (int) $usuario['id']) : [];
+$tipoVideo = tipo_video_leccion($lesson['video_url'] ?? null);
+$youtubeId = id_video_youtube($lesson['video_url'] ?? null);
+$tiempoRequerido = 600;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['ajax'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $token = $_POST['token_csrf'] ?? '';
+    if (!hash_equals(token_csrf(), $token)) {
+        echo json_encode(['ok' => false, 'mensaje' => 'Token de seguridad inválido.']);
+        exit;
+    }
+
+    $accion = $_POST['accion'] ?? '';
+
+    if ($accion === 'registrar_tiempo_video' && $mostrarProgreso && !$leccionCompletada) {
+        $total = registrar_tiempo_video_leccion($id, (int) ($_POST['segundos'] ?? 0));
+        echo json_encode(['ok' => true, 'total' => $total, 'requerido' => $tiempoRequerido]);
+        exit;
+    }
+
+    if ($accion === 'marcar_leccion_completada' && $mostrarProgreso) {
+        if ($leccionCompletada) {
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+        if (empty($lesson['video_url']) || !in_array($tipoVideo, ['youtube', 'html5'], true)) {
+            echo json_encode(['ok' => false, 'mensaje' => 'Esta lección requiere un video compatible para marcarla como completada.']);
+            exit;
+        }
+        if (obtener_tiempo_video_leccion($id) < $tiempoRequerido) {
+            echo json_encode(['ok' => false, 'mensaje' => 'Debes ver el video al menos 10 minutos en esta sesión.']);
+            exit;
+        }
+        marcar_leccion_completada($id, (int) $usuario['id']);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
+    echo json_encode(['ok' => false, 'mensaje' => 'Acción no permitida.']);
+    exit;
+}
+
+reiniciar_tiempo_video_leccion($id);
 
 $siblings = bd()->prepare('SELECT id, title, sort_order FROM lessons WHERE course_id = ? ORDER BY sort_order, id');
-$siblings->execute([(int) $lesson['course_id']]);
+$siblings->execute([$idCurso]);
 $siblings = $siblings->fetchAll();
 
 $prev = $next = null;
@@ -38,6 +86,7 @@ foreach ($siblings as $i => $sib) {
     }
 }
 
+$porcentajeLeccion = $leccionCompletada ? 100 : 0;
 $tituloPagina = $lesson['title'];
 require_once __DIR__ . '/includes/encabezado.php';
 ?>
@@ -45,45 +94,122 @@ require_once __DIR__ . '/includes/encabezado.php';
 <div class="row g-4">
     <div class="col-lg-3">
         <div class="sidebar-course">
-            <div class="panel-header"><h3 class="mb-0"><?= escapar($lesson['course_title']) ?></h3></div>
+            <div class="panel-header">
+                <h3 class="mb-0"><?= escapar($lesson['course_title']) ?></h3>
+                <?php if ($mostrarProgreso): ?>
+                    <div class="mt-2">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>Progreso del curso</span>
+                            <strong><?= $progresoCurso ?>%</strong>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-success" style="width: <?= $progresoCurso ?>%"></div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
             <div class="list-group list-group-flush">
                 <?php foreach ($siblings as $i => $sib): ?>
+                    <?php $completada = in_array((int) $sib['id'], $idsCompletadas, true); ?>
                     <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $sib['id'] ?>"
-                       class="list-group-item list-group-item-action <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
-                        <span class="text-muted me-1"><?= $i + 1 ?>.</span> <?= escapar($sib['title']) ?>
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
+                        <span>
+                            <span class="text-muted me-1"><?= $i + 1 ?>.</span>
+                            <?= escapar($sib['title']) ?>
+                        </span>
+                        <?php if ($mostrarProgreso): ?>
+                            <?php if ($completada): ?>
+                                <span class="badge bg-success"><i class="bi bi-check-lg"></i></span>
+                            <?php else: ?>
+                                <span class="badge bg-secondary">0%</span>
+                            <?php endif; ?>
+                        <?php endif; ?>
                     </a>
                 <?php endforeach; ?>
             </div>
         </div>
-        <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $lesson['course_id'] ?>" class="btn btn-outline-secondary w-100 mt-3">
+        <a href="<?= URL_APP ?>/curso.php?id=<?= $idCurso ?>" class="btn btn-outline-secondary w-100 mt-3">
             <i class="bi bi-arrow-left me-1"></i> Volver al curso
         </a>
     </div>
     <div class="col-lg-9">
         <div class="panel">
             <div class="panel-header">
-                <h2><?= escapar($lesson['title']) ?></h2>
+                <div>
+                    <h2 class="mb-1"><?= escapar($lesson['title']) ?></h2>
+                    <?php if ($mostrarProgreso): ?>
+                        <p class="subtitle mb-0 small">
+                            Progreso de esta lección:
+                            <strong id="leccion-porcentaje-texto"><?= $porcentajeLeccion ?>%</strong>
+                            <?php if ($leccionCompletada): ?>
+                                <span class="badge bg-success ms-1"><i class="bi bi-check-circle me-1"></i>Completada</span>
+                            <?php endif; ?>
+                        </p>
+                    <?php endif; ?>
+                </div>
                 <?php if ($esPropietario): ?>
                     <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= $id ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
                 <?php endif; ?>
             </div>
             <div class="panel-body">
-                <?php if ($lesson['video_url']): ?>
-                    <div class="ratio ratio-16x9 mb-4 rounded overflow-hidden">
-                        <?php
-                        $video = $lesson['video_url'];
-                        if (preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/', $video, $m)) {
-                            $embed = 'https://www.youtube.com/embed/' . $m[1];
-                            echo '<iframe src="' . escapar($embed) . '" allowfullscreen></iframe>';
-                        } else {
-                            echo '<a href="' . escapar($video) . '" target="_blank" class="btn btn-primary">Ver video</a>';
-                        }
-                        ?>
+                <?php if ($mostrarProgreso && !$leccionCompletada && in_array($tipoVideo, ['youtube', 'html5'], true)): ?>
+                    <div id="lesson-progress" class="lesson-progress-box mb-4"
+                         data-lesson-id="<?= $id ?>"
+                         data-video-type="<?= escapar($tipoVideo) ?>"
+                         data-youtube-id="<?= escapar($youtubeId ?? '') ?>"
+                         data-requerido="<?= $tiempoRequerido ?>"
+                         data-completada="0"
+                         data-csrf="<?= escapar(token_csrf()) ?>"
+                         data-url="<?= escapar(URL_APP . '/leccion.php?id=' . $id) ?>">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                            <span class="small fw-semibold"><i class="bi bi-play-circle me-1"></i>Tiempo de video en esta sesión</span>
+                            <span class="small" id="video-tiempo-texto">0:00 / 10:00</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 8px;">
+                            <div id="video-tiempo-barra" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <p class="small text-muted mb-2">El contador solo avanza mientras el video se reproduce. Si sales de la lección, se reinicia.</p>
+                        <button type="button" id="btn-marcar-completada" class="btn btn-success btn-sm" disabled>
+                            <i class="bi bi-check2-circle me-1"></i> Marcar como completada
+                        </button>
+                    </div>
+                <?php elseif ($mostrarProgreso && $leccionCompletada): ?>
+                    <div id="lesson-progress" class="lesson-progress-box mb-4 lesson-progress-done"
+                         data-completada="1"
+                         data-video-type="<?= escapar($tipoVideo) ?>">
+                        <div class="alert alert-success mb-0 py-2">
+                            <i class="bi bi-check-circle-fill me-1"></i> Has completado esta lección.
+                        </div>
+                    </div>
+                <?php elseif ($mostrarProgreso && $tipoVideo === 'externo'): ?>
+                    <div class="alert alert-warning small mb-4">
+                        El video de esta lección no permite seguimiento automático. Usa un enlace de YouTube o un archivo de video directo (MP4) para habilitar el progreso.
+                    </div>
+                <?php elseif ($mostrarProgreso && $tipoVideo === 'ninguno'): ?>
+                    <div class="alert alert-info small mb-4">
+                        Esta lección no tiene video. Solo las lecciones con video pueden marcarse como completadas.
                     </div>
                 <?php endif; ?>
+
+                <?php if ($lesson['video_url']): ?>
+                    <div class="mb-4 rounded overflow-hidden">
+                        <?php if ($tipoVideo === 'youtube'): ?>
+                            <div id="yt-player" class="ratio ratio-16x9 bg-dark"></div>
+                        <?php elseif ($tipoVideo === 'html5'): ?>
+                            <video id="lesson-video" class="w-100 rounded border" controls playsinline preload="metadata">
+                                <source src="<?= escapar($lesson['video_url']) ?>">
+                                Tu navegador no soporta la reproducción de video.
+                            </video>
+                        <?php else: ?>
+                            <a href="<?= escapar($lesson['video_url']) ?>" target="_blank" class="btn btn-primary"><i class="bi bi-play-btn me-1"></i> Ver video</a>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
                 <?php if (!empty($lesson['attachment'])): ?>
                     <?= renderizar_vista_previa_documento($lesson['attachment'], 'Documento de la lección') ?>
                 <?php endif; ?>
+
                 <?php if (trim($lesson['content'] ?? '') !== ''): ?>
                 <div class="content-html">
                     <?= $lesson['content'] ?>
@@ -101,5 +227,12 @@ require_once __DIR__ . '/includes/encabezado.php';
         </div>
     </div>
 </div>
+
+<?php if ($mostrarProgreso && !$leccionCompletada && in_array($tipoVideo, ['youtube', 'html5'], true)): ?>
+    <?php if ($tipoVideo === 'youtube'): ?>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <?php endif; ?>
+    <script src="<?= URL_APP ?>/assets/js/leccion-progreso.js"></script>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/includes/pie.php'; ?>

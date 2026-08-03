@@ -183,6 +183,104 @@ function es_propietario_curso(array $curso, ?array $usuario = null): bool
         || ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']);
 }
 
+function id_video_youtube(?string $url): ?string
+{
+    if (!$url || !preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/', $url, $coincidencias)) {
+        return null;
+    }
+    return $coincidencias[1];
+}
+
+function es_video_html5(?string $url): bool
+{
+    if (!$url) {
+        return false;
+    }
+    $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
+    return in_array($extension, ['mp4', 'webm', 'ogg', 'mov'], true);
+}
+
+function tipo_video_leccion(?string $url): string
+{
+    if (id_video_youtube($url)) {
+        return 'youtube';
+    }
+    if (es_video_html5($url)) {
+        return 'html5';
+    }
+    return $url ? 'externo' : 'ninguno';
+}
+
+function leccion_esta_completada(int $idLeccion, int $idEstudiante): bool
+{
+    $consulta = bd()->prepare('SELECT id FROM lesson_completions WHERE lesson_id = ? AND student_id = ? LIMIT 1');
+    $consulta->execute([$idLeccion, $idEstudiante]);
+    return (bool) $consulta->fetch();
+}
+
+function obtener_ids_lecciones_completadas(int $idCurso, int $idEstudiante): array
+{
+    $consulta = bd()->prepare(
+        'SELECT lc.lesson_id FROM lesson_completions lc
+         JOIN lessons l ON l.id = lc.lesson_id
+         WHERE l.course_id = ? AND lc.student_id = ?'
+    );
+    $consulta->execute([$idCurso, $idEstudiante]);
+    return array_map('intval', array_column($consulta->fetchAll(), 'lesson_id'));
+}
+
+function porcentaje_progreso_curso(int $idCurso, int $idEstudiante): int
+{
+    $total = contar_consulta('SELECT COUNT(*) FROM lessons WHERE course_id = ?', [$idCurso]);
+    if ($total === 0) {
+        return 0;
+    }
+    $completadas = contar_consulta(
+        'SELECT COUNT(*) FROM lesson_completions lc
+         JOIN lessons l ON l.id = lc.lesson_id
+         WHERE l.course_id = ? AND lc.student_id = ?',
+        [$idCurso, $idEstudiante]
+    );
+    return (int) round(($completadas / $total) * 100);
+}
+
+function marcar_leccion_completada(int $idLeccion, int $idEstudiante): bool
+{
+    $consulta = bd()->prepare(
+        'INSERT INTO lesson_completions (lesson_id, student_id) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE completed_at = CURRENT_TIMESTAMP'
+    );
+    return $consulta->execute([$idLeccion, $idEstudiante]);
+}
+
+function reiniciar_tiempo_video_leccion(int $idLeccion): void
+{
+    if (!isset($_SESSION['tiempo_video_leccion'])) {
+        $_SESSION['tiempo_video_leccion'] = [];
+    }
+    $_SESSION['tiempo_video_leccion'][$idLeccion] = 0;
+}
+
+function obtener_tiempo_video_leccion(int $idLeccion): int
+{
+    return (int) ($_SESSION['tiempo_video_leccion'][$idLeccion] ?? 0);
+}
+
+function registrar_tiempo_video_leccion(int $idLeccion, int $segundos): int
+{
+    if ($segundos < 1 || $segundos > 120) {
+        return obtener_tiempo_video_leccion($idLeccion);
+    }
+    if (!isset($_SESSION['tiempo_video_leccion'])) {
+        $_SESSION['tiempo_video_leccion'] = [];
+    }
+    $_SESSION['tiempo_video_leccion'][$idLeccion] = min(
+        86400,
+        obtener_tiempo_video_leccion($idLeccion) + $segundos
+    );
+    return $_SESSION['tiempo_video_leccion'][$idLeccion];
+}
+
 function contar_consulta(string $sql, array $parametros = []): int
 {
     $consulta = bd()->prepare($sql);

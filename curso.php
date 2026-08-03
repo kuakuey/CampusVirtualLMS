@@ -179,6 +179,10 @@ $lecciones = bd()->prepare('SELECT * FROM lessons WHERE course_id = ? ORDER BY s
 $lecciones->execute([$id]);
 $lecciones = $lecciones->fetchAll();
 
+$mostrarProgresoEstudiante = $usuario['role'] === 'student' && $matriculado;
+$progresoCurso = $mostrarProgresoEstudiante ? porcentaje_progreso_curso($id, (int) $usuario['id']) : 0;
+$idsLeccionesCompletadas = $mostrarProgresoEstudiante ? obtener_ids_lecciones_completadas($id, (int) $usuario['id']) : [];
+
 $tareas = bd()->prepare('SELECT * FROM assignments WHERE course_id = ? ORDER BY due_date IS NULL, due_date, id');
 $tareas->execute([$id]);
 $tareas = $tareas->fetchAll();
@@ -292,6 +296,24 @@ require_once __DIR__ . '/includes/encabezado.php';
 </div>
 <?php endif; ?>
 
+<?php if ($mostrarProgresoEstudiante && $lecciones): ?>
+<div class="panel mb-4">
+    <div class="panel-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <span class="fw-semibold"><i class="bi bi-graph-up me-1"></i> Tu progreso en el curso</span>
+            <span class="badge bg-success fs-6"><?= $progresoCurso ?>%</span>
+        </div>
+        <div class="progress" style="height: 10px;">
+            <div class="progress-bar bg-success" style="width: <?= $progresoCurso ?>%"></div>
+        </div>
+        <p class="small text-muted mb-0 mt-2">
+            <?= count($idsLeccionesCompletadas) ?> de <?= count($lecciones) ?> lecciones completadas.
+            Debes ver cada video al menos 10 minutos para marcarla como completada.
+        </p>
+    </div>
+</div>
+<?php endif; ?>
+
 <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
     <?php
     $pestañas = [
@@ -322,10 +344,16 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <div class="empty-state"><i class="bi bi-journal"></i><p class="mb-0">Aún no hay lecciones.</p></div>
                 <?php else: ?>
                     <?php foreach ($lecciones as $i => $lesson): ?>
+                        <?php $leccionCompletada = in_array((int) $lesson['id'], $idsLeccionesCompletadas, true); ?>
                         <div class="lesson-item">
                             <div>
                                 <span class="badge bg-light text-dark border me-2"><?= $i + 1 ?></span>
                                 <strong><?= escapar($lesson['title']) ?></strong>
+                                <?php if ($mostrarProgresoEstudiante): ?>
+                                    <span class="badge <?= $leccionCompletada ? 'bg-success' : 'bg-secondary' ?> ms-1">
+                                        <?= $leccionCompletada ? '100%' : '0%' ?>
+                                    </span>
+                                <?php endif; ?>
                                 <?php if (!empty($lesson['attachment'])): ?>
                                     <span class="badge bg-light text-dark border ms-1"><i class="bi bi-paperclip"></i> Documento</span>
                                 <?php endif; ?>
