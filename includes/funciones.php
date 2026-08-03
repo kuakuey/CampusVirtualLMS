@@ -226,6 +226,36 @@ function obtener_lecciones_curso(int $idCurso): array
     return $consulta->fetchAll();
 }
 
+function obtener_siguiente_orden_leccion(int $idSubcurso): int
+{
+    $consulta = bd()->prepare('SELECT COALESCE(MAX(sort_order), 0) FROM lessons WHERE subcourse_id = ?');
+    $consulta->execute([$idSubcurso]);
+    return (int) $consulta->fetchColumn() + 1;
+}
+
+function reordenar_lecciones_curso(array $idsOrdenados, int $idCurso, int $idSubcurso): bool
+{
+    $idsOrdenados = array_values(array_filter(array_map('intval', $idsOrdenados)));
+    if (!$idsOrdenados) {
+        return true;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($idsOrdenados), '?'));
+    $consulta = bd()->prepare(
+        "SELECT id FROM lessons WHERE course_id = ? AND subcourse_id = ? AND id IN ($placeholders)"
+    );
+    $consulta->execute(array_merge([$idCurso, $idSubcurso], $idsOrdenados));
+    if (count($consulta->fetchAll()) !== count($idsOrdenados)) {
+        return false;
+    }
+
+    $actualizar = bd()->prepare('UPDATE lessons SET sort_order = ? WHERE id = ? AND course_id = ?');
+    foreach ($idsOrdenados as $indice => $idLeccion) {
+        $actualizar->execute([$indice + 1, $idLeccion, $idCurso]);
+    }
+    return true;
+}
+
 function es_propietario_curso(array $curso, ?array $usuario = null): bool
 {
     $usuario = $usuario ?? usuario_actual();

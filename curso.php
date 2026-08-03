@@ -37,16 +37,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificar_csrf();
     $accion = $_POST['accion'] ?? '';
 
+    if ($accion === 'reordenar_lecciones' && $esPropietario) {
+        header('Content-Type: application/json; charset=utf-8');
+        $token = $_POST['token_csrf'] ?? '';
+        if (!hash_equals(token_csrf(), $token)) {
+            echo json_encode(['ok' => false, 'mensaje' => 'Token de seguridad inválido.']);
+            exit;
+        }
+        $idSubcurso = (int) ($_POST['subcourse_id'] ?? 0);
+        $orden = json_decode($_POST['orden'] ?? '[]', true);
+        if (!is_array($orden)) {
+            $orden = [];
+        }
+        $exito = $idSubcurso > 0 && reordenar_lecciones_curso($orden, $id, $idSubcurso);
+        echo json_encode($exito
+            ? ['ok' => true]
+            : ['ok' => false, 'mensaje' => 'No se pudo guardar el orden.']);
+        exit;
+    }
+
     if ($accion === 'agregar_leccion' && $esPropietario) {
         $title = trim($_POST['title'] ?? '');
         $content = trim($_POST['content'] ?? '');
         $video = trim($_POST['video_url'] ?? '');
-        $order = (int) ($_POST['sort_order'] ?? 0);
         $idSubcurso = (int) ($_POST['subcourse_id'] ?? 0);
         if ($title !== '') {
             if ($idSubcurso <= 0 || !obtener_subcurso($idSubcurso, $id)) {
                 $idSubcurso = asegurar_subcurso_default($id);
             }
+            $order = obtener_siguiente_orden_leccion($idSubcurso);
             $adjunto = !empty($_FILES['documento']['name']) ? subir_archivo($_FILES['documento'], 'lecciones') : null;
             $stmt = bd()->prepare('INSERT INTO lessons (course_id, subcourse_id, title, content, video_url, sort_order, attachment) VALUES (?,?,?,?,?,?,?)');
             $stmt->execute([$id, $idSubcurso, $title, $content, $video ?: null, $order, $adjunto]);
@@ -241,6 +260,13 @@ if ($mostrarSubcursos) {
 }
 $subcursoActivo = $mostrarSubcursos ? obtener_subcurso($idModuloActivo, $id) : null;
 $leccionesModuloActivo = $mostrarSubcursos ? ($leccionesPorSubcurso[$idModuloActivo] ?? []) : $lecciones;
+$listaLeccionesVista = $mostrarSubcursos ? $leccionesModuloActivo : $lecciones;
+$idSubcursoLista = $mostrarSubcursos
+    ? $idModuloActivo
+    : (int) ($listaLeccionesVista[0]['subcourse_id'] ?? 0);
+if ($idSubcursoLista <= 0 && $listaLeccionesVista) {
+    $idSubcursoLista = asegurar_subcurso_default($id);
+}
 
 $mostrarProgresoEstudiante = $usuario['role'] === 'student' && $matriculado;
 $progresoCurso = $mostrarProgresoEstudiante ? porcentaje_progreso_curso($id, (int) $usuario['id']) : 0;
@@ -436,7 +462,8 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="panel-body">
                 <?php if (!$lecciones && !$subcursos): ?>
                     <div class="empty-state"><i class="bi bi-journal"></i><p class="mb-0">Aún no hay contenido.<?= $esPropietario ? ' Agrega un módulo o una lección.' : '' ?></p></div>
-                <?php elseif ($mostrarSubcursos): ?>
+                <?php else: ?>
+                    <?php if ($mostrarSubcursos): ?>
                     <ul class="nav nav-tabs flex-nowrap overflow-auto mb-3" role="tablist">
                         <?php foreach ($subcursos as $subcurso): ?>
                             <?php $idSub = (int) $subcurso['id']; ?>
@@ -480,70 +507,55 @@ require_once __DIR__ . '/includes/encabezado.php';
                         </form>
                     </div>
                     <?php endif; ?>
-
-                    <?php if (!$leccionesModuloActivo): ?>
-                        <div class="empty-state py-4"><i class="bi bi-journal"></i><p class="mb-0">Este módulo aún no tiene lecciones.</p></div>
-                    <?php else: ?>
-                        <?php foreach ($leccionesModuloActivo as $i => $lesson): ?>
-                            <?php $leccionCompletada = in_array((int) $lesson['id'], $idsLeccionesCompletadas, true); ?>
-                            <div class="lesson-item">
-                                <div>
-                                    <span class="badge bg-light text-dark border me-2"><?= $i + 1 ?></span>
-                                    <strong><?= escapar($lesson['title']) ?></strong>
-                                    <?php if ($mostrarProgresoEstudiante): ?>
-                                        <span class="badge <?= $leccionCompletada ? 'bg-success' : 'bg-secondary' ?> ms-1">
-                                            <?= $leccionCompletada ? '100%' : '0%' ?>
-                                        </span>
-                                    <?php endif; ?>
-                                    <?php if (!empty($lesson['attachment'])): ?>
-                                        <span class="badge bg-light text-dark border ms-1"><i class="bi bi-paperclip"></i> Documento</span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="d-flex gap-2">
-                                    <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-primary">Ver</a>
-                                    <?php if ($esPropietario): ?>
-                                    <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-                                    <form method="post" onsubmit="return confirm('¿Eliminar lección?');">
-                                        <?= campo_csrf() ?>
-                                        <input type="hidden" name="accion" value="eliminar_leccion">
-                                        <input type="hidden" name="lesson_id" value="<?= (int) $lesson['id'] ?>">
-                                        <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
-                                    </form>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
                     <?php endif; ?>
-                <?php else: ?>
-                    <?php foreach ($lecciones as $i => $lesson): ?>
-                        <?php $leccionCompletada = in_array((int) $lesson['id'], $idsLeccionesCompletadas, true); ?>
-                        <div class="lesson-item">
-                            <div>
-                                <span class="badge bg-light text-dark border me-2"><?= $i + 1 ?></span>
-                                <strong><?= escapar($lesson['title']) ?></strong>
-                                <?php if ($mostrarProgresoEstudiante): ?>
-                                    <span class="badge <?= $leccionCompletada ? 'bg-success' : 'bg-secondary' ?> ms-1">
-                                        <?= $leccionCompletada ? '100%' : '0%' ?>
-                                    </span>
-                                <?php endif; ?>
-                                <?php if (!empty($lesson['attachment'])): ?>
-                                    <span class="badge bg-light text-dark border ms-1"><i class="bi bi-paperclip"></i> Documento</span>
-                                <?php endif; ?>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-primary">Ver</a>
-                                <?php if ($esPropietario): ?>
-                                <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-                                <form method="post" onsubmit="return confirm('¿Eliminar lección?');">
-                                    <?= campo_csrf() ?>
-                                    <input type="hidden" name="accion" value="eliminar_leccion">
-                                    <input type="hidden" name="lesson_id" value="<?= (int) $lesson['id'] ?>">
-                                    <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
-                                </form>
-                                <?php endif; ?>
-                            </div>
+
+                    <?php if (!$listaLeccionesVista && $mostrarSubcursos): ?>
+                        <div class="empty-state py-4"><i class="bi bi-journal"></i><p class="mb-0">Este módulo aún no tiene lecciones.</p></div>
+                    <?php elseif ($listaLeccionesVista): ?>
+                        <?php if ($esPropietario): ?>
+                        <p class="small text-muted mb-2"><i class="bi bi-arrows-move me-1"></i>Arrastra las lecciones para cambiar el orden.</p>
+                        <?php endif; ?>
+                        <div id="lista-lecciones-ordenables"
+                             class="lesson-sortable-list"
+                             data-sortable="<?= $esPropietario ? '1' : '0' ?>"
+                             data-course-id="<?= $id ?>"
+                             data-subcourse-id="<?= $idSubcursoLista ?>"
+                             data-csrf="<?= escapar(token_csrf()) ?>"
+                             data-url="<?= escapar(URL_APP . '/curso.php?id=' . $id) ?>">
+                            <?php foreach ($listaLeccionesVista as $i => $lesson): ?>
+                                <?php $leccionCompletada = in_array((int) $lesson['id'], $idsLeccionesCompletadas, true); ?>
+                                <div class="lesson-item" data-lesson-id="<?= (int) $lesson['id'] ?>">
+                                    <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
+                                        <?php if ($esPropietario): ?>
+                                        <span class="lesson-drag-handle" title="Arrastrar para reordenar"><i class="bi bi-grip-vertical"></i></span>
+                                        <?php endif; ?>
+                                        <span class="badge bg-light text-dark border lesson-order-badge"><?= $i + 1 ?></span>
+                                        <strong class="text-truncate"><?= escapar($lesson['title']) ?></strong>
+                                        <?php if ($mostrarProgresoEstudiante): ?>
+                                            <span class="badge <?= $leccionCompletada ? 'bg-success' : 'bg-secondary' ?> ms-1 flex-shrink-0">
+                                                <?= $leccionCompletada ? '100%' : '0%' ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($lesson['attachment'])): ?>
+                                            <span class="badge bg-light text-dark border ms-1 flex-shrink-0"><i class="bi bi-paperclip"></i> Documento</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="d-flex gap-2 flex-shrink-0">
+                                        <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-primary">Ver</a>
+                                        <?php if ($esPropietario): ?>
+                                        <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+                                        <form method="post" onsubmit="return confirm('¿Eliminar lección?');">
+                                            <?= campo_csrf() ?>
+                                            <input type="hidden" name="accion" value="eliminar_leccion">
+                                            <input type="hidden" name="lesson_id" value="<?= (int) $lesson['id'] ?>">
+                                            <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
-                    <?php endforeach; ?>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -603,10 +615,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <input type="file" name="documento" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt">
                         <small class="text-muted">PDF, Word, Excel, PowerPoint, imágenes o texto. Se podrá previsualizar al abrir la lección.</small>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Orden</label>
-                        <input type="number" name="sort_order" class="form-control" value="<?= count($leccionesModuloActivo) + 1 ?>">
-                    </div>
                     <button class="btn btn-primary w-100" type="submit">Agregar lección</button>
                 </form>
             </div>
@@ -614,6 +622,11 @@ require_once __DIR__ . '/includes/encabezado.php';
     </div>
     <?php endif; ?>
 </div>
+
+<?php if ($esPropietario): ?>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="<?= URL_APP ?>/assets/js/lecciones-orden.js"></script>
+<?php endif; ?>
 
 <?php elseif ($pestaña === 'tareas'): ?>
 <div class="row g-4">

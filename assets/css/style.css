@@ -307,6 +307,26 @@ body {
     background: #f8fbfc;
 }
 
+.lesson-drag-handle {
+    cursor: grab;
+    color: #94a3b8;
+    line-height: 1;
+    touch-action: none;
+}
+
+.lesson-drag-handle:active {
+    cursor: grabbing;
+}
+
+.lesson-item-ghost {
+    opacity: 0.55;
+}
+
+.lesson-sortable-list .lesson-item.sortable-chosen {
+    border-color: var(--av-primary, #0d6efd);
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+}
+
 .content-html img { max-width: 100%; height: auto; }
 
 .sidebar-course {

@@ -28,7 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $content = trim($_POST['content'] ?? '');
     $video = trim($_POST['video_url'] ?? '');
-    $order = (int) ($_POST['sort_order'] ?? 0);
     $idSubcurso = (int) ($_POST['subcourse_id'] ?? 0);
 
     if ($title === '') {
@@ -58,6 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
+        $order = (int) ($leccion['sort_order'] ?? 0);
+        if ($mostrarSelectorSubcurso && $idSubcurso !== (int) ($leccion['subcourse_id'] ?? 0)) {
+            $order = obtener_siguiente_orden_leccion($idSubcurso);
+        }
         $consulta = bd()->prepare(
             'UPDATE lessons SET subcourse_id=?, title=?, content=?, video_url=?, sort_order=?, attachment=? WHERE id=? AND course_id=?'
         );
@@ -70,7 +73,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'title' => $title,
         'content' => $content,
         'video_url' => $video,
-        'sort_order' => $order,
         'subcourse_id' => $idSubcurso,
         'attachment' => $adjunto,
     ]);
@@ -122,10 +124,6 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="mb-3">
                 <label class="form-label">URL de video (opcional)</label>
                 <input type="url" name="video_url" class="form-control" value="<?= escapar($leccion['video_url'] ?? '') ?>" placeholder="https://...">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Orden</label>
-                <input type="number" name="sort_order" class="form-control" value="<?= (int) ($leccion['sort_order'] ?? 0) ?>" min="0">
             </div>
             <div class="mb-3">
                 <label class="form-label">Documento (opcional)</label>
