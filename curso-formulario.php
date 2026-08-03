@@ -168,8 +168,9 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <small class="text-muted">Generado automáticamente</small>
                 </div>
                 <div class="col-12">
-                    <label class="form-label">Descripción</label>
-                    <textarea name="description" class="form-control" rows="4"><?= escapar($_POST['description'] ?? '') ?></textarea>
+                    <label class="form-label">Descripción (HTML permitido)</label>
+                    <textarea name="description" class="form-control" rows="6"><?= escapar($_POST['description'] ?? '') ?></textarea>
+                    <small class="text-muted">Puedes usar etiquetas HTML para formato, listas, enlaces e imágenes.</small>
                 </div>
 
                 <div class="col-12">

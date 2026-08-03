@@ -371,8 +371,12 @@ require_once __DIR__ . '/includes/encabezado.php';
     </div>
 </div>
 
-<?php if ($curso['description']): ?>
-<div class="panel mb-4"><div class="panel-body"><?= nl2br(escapar($curso['description'])) ?></div></div>
+<?php if (trim($curso['description'] ?? '') !== ''): ?>
+<div class="panel mb-4">
+    <div class="panel-body content-html">
+        <?= $curso['description'] ?>
+    </div>
+</div>
 <?php endif; ?>
 
 <?php if (!empty($curso['document_path'])): ?>

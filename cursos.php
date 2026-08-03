@@ -120,7 +120,7 @@ require_once __DIR__ . '/includes/encabezado.php';
             </div>
             <div class="course-body">
                 <h3><?= escapar($curso['title']) ?></h3>
-                <p><?= escapar(mb_strimwidth($curso['description'] ?? '', 0, 100, '…')) ?></p>
+                <p><?= escapar(mb_strimwidth(strip_tags($curso['description'] ?? ''), 0, 100, '…')) ?></p>
                 <div class="small text-muted mb-3">
                     <div><i class="bi bi-person me-1"></i><?= escapar($curso['teacher_name']) ?></div>
                     <div><i class="bi bi-tag me-1"></i><?= escapar($curso['category_name'] ?? 'Sin categoría') ?></div>
