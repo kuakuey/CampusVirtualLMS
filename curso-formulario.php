@@ -71,21 +71,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $rutaDocumento = $curso['document_path'] ?? null;
-    if (!$errors && !$esNuevo) {
-        if (!empty($_POST['quitar_documento'])) {
-            eliminar_archivo_subida($rutaDocumento);
-            $rutaDocumento = null;
-        }
-        if (!empty($_FILES['documento']['name'])) {
-            eliminar_archivo_subida($rutaDocumento);
-            $rutaDocumento = subir_archivo($_FILES['documento'], 'cursos');
-            if ($rutaDocumento === null) {
-                $errors[] = 'No se pudo subir el documento.';
-            }
-        }
-    }
-
     if (!$errors) {
         $claveHash = $esNuevo ? null : ($curso['enrollment_password'] ?? null);
         if ($tipoInscripcion === 'password') {
@@ -113,9 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $token = $curso['enrollment_token'] ?? null;
             }
             $stmt = bd()->prepare(
-                'UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, document_path=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=? WHERE id=?'
+                'UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=? WHERE id=?'
             );
-            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $rutaDocumento, $estado, $tipoInscripcion, $claveHash, $token, $id]);
+            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $id]);
             mensaje_flash('success', 'Curso actualizado.');
         }
         redirigir('curso.php?id=' . $id);
@@ -166,7 +151,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <?php if ($errors): ?>
             <div class="alert alert-danger"><ul class="mb-0 ps-3"><?php foreach ($errors as $err): ?><li><?= escapar($err) ?></li><?php endforeach; ?></ul></div>
         <?php endif; ?>
-        <form method="post"<?= $esNuevo ? '' : ' enctype="multipart/form-data"' ?>>
+        <form method="post">
             <?= campo_csrf() ?>
             <input type="hidden" name="accion" value="guardar">
             <div class="row g-3">
@@ -206,22 +191,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('url-inscripcion').value)"><i class="bi bi-clipboard"></i></button>
                     </div>
                     <small class="text-muted">Comparte este enlace. Al abrirlo, el estudiante se inscribe automáticamente.</small>
-                </div>
-                <?php endif; ?>
-
-                <?php if (!$esNuevo): ?>
-                <div class="col-12">
-                    <label class="form-label">Documento (opcional)</label>
-                    <input type="file" name="documento" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt">
-                    <?php if (!empty($curso['document_path'])): ?>
-                        <div class="mt-3">
-                            <?= renderizar_vista_previa_documento($curso['document_path'], 'Documento actual') ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="quitar_documento" value="1" id="quitar_documento">
-                                <label class="form-check-label" for="quitar_documento">Quitar documento actual</label>
-                            </div>
-                        </div>
-                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
