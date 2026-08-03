@@ -166,7 +166,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <?php if ($errors): ?>
             <div class="alert alert-danger"><ul class="mb-0 ps-3"><?php foreach ($errors as $err): ?><li><?= escapar($err) ?></li><?php endforeach; ?></ul></div>
         <?php endif; ?>
-        <form method="post" enctype="multipart/form-data">
+        <form method="post"<?= $esNuevo ? '' : ' enctype="multipart/form-data"' ?>>
             <?= campo_csrf() ?>
             <input type="hidden" name="accion" value="guardar">
             <div class="row g-3">
@@ -207,7 +207,9 @@ require_once __DIR__ . '/includes/encabezado.php';
                     </div>
                     <small class="text-muted">Comparte este enlace. Al abrirlo, el estudiante se inscribe automáticamente.</small>
                 </div>
+                <?php endif; ?>
 
+                <?php if (!$esNuevo): ?>
                 <div class="col-12">
                     <label class="form-label">Documento (opcional)</label>
                     <input type="file" name="documento" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt">
