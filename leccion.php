@@ -100,9 +100,22 @@ $tituloPagina = $lesson['title'];
 require_once __DIR__ . '/includes/encabezado.php';
 ?>
 
-<div class="row g-4">
-    <div class="col-lg-3">
-        <div class="sidebar-course">
+<button type="button" class="lesson-sidebar-fab d-lg-none" id="btn-abrir-lecciones" aria-label="Ver lecciones del curso">
+    <i class="bi bi-list-ul"></i>
+    <span>Lecciones</span>
+</button>
+<div class="lesson-sidebar-backdrop d-lg-none" id="lesson-sidebar-backdrop" aria-hidden="true"></div>
+
+<div class="row g-4 lesson-layout">
+    <div class="col-lg-3 lesson-sidebar-col">
+        <div class="lesson-sidebar-drawer" id="lesson-sidebar-drawer">
+            <div class="lesson-sidebar-drawer-header d-lg-none">
+                <span class="fw-semibold">Contenido del curso</span>
+                <button type="button" class="btn btn-sm btn-light border" id="btn-cerrar-lecciones" aria-label="Cerrar menú">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="sidebar-course">
             <div class="panel-header">
                 <h3 class="mb-0"><?= escapar($lesson['course_title']) ?></h3>
                 <?php if ($mostrarProgreso): ?>
@@ -178,12 +191,13 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
+            </div>
+            <a href="<?= escapar($urlVolverCurso) ?>" class="btn btn-outline-secondary w-100 mt-3 lesson-sidebar-back">
+                <i class="bi bi-arrow-left me-1"></i> Volver al curso
+            </a>
         </div>
-        <a href="<?= escapar($urlVolverCurso) ?>" class="btn btn-outline-secondary w-100 mt-3">
-            <i class="bi bi-arrow-left me-1"></i> Volver al curso
-        </a>
     </div>
-    <div class="col-lg-9">
+    <div class="col-lg-9 col-12 lesson-main-col">
         <div class="panel">
             <?php if ($esPropietario): ?>
             <div class="panel-header">
@@ -201,8 +215,8 @@ require_once __DIR__ . '/includes/encabezado.php';
                          data-completada="0"
                          data-csrf="<?= escapar(token_csrf()) ?>"
                          data-url="<?= escapar(URL_APP . '/leccion.php?id=' . $id) ?>">
-                        <div class="lesson-progress-row row align-items-center g-3 flex-nowrap">
-                            <div class="col min-w-0">
+                        <div class="lesson-progress-row row align-items-center g-3 lesson-progress-stack">
+                            <div class="col-12 col-md min-w-0">
                                 <div class="d-flex align-items-baseline flex-wrap gap-2">
                                     <span class="lesson-progress-label mb-0">Tiempo de video</span>
                                     <span class="lesson-progress-value" id="video-tiempo-texto">0:00 / 10:00</span>
@@ -211,7 +225,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                                     <div id="video-tiempo-barra" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                             </div>
-                            <div class="col-auto ms-auto">
+                            <div class="col-12 col-md-auto lesson-progress-action">
                                 <button type="button" id="btn-marcar-completada" class="btn btn-success text-nowrap" disabled>
                                     <i class="bi bi-check2-circle me-1"></i> Marcar como completada
                                 </button>
@@ -222,14 +236,14 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <div id="lesson-progress" class="lesson-progress-box mb-4 lesson-progress-done"
                          data-completada="1"
                          data-video-type="<?= escapar($tipoVideo) ?>">
-                        <div class="lesson-progress-row row align-items-center g-3 flex-nowrap">
-                            <div class="col min-w-0">
+                        <div class="lesson-progress-row row align-items-center g-3 lesson-progress-stack">
+                            <div class="col-12 col-md min-w-0">
                                 <div class="d-flex align-items-baseline flex-wrap gap-2">
                                     <span class="lesson-progress-label mb-0">Tiempo de video</span>
                                     <span class="lesson-progress-value text-success"><i class="bi bi-check-circle-fill me-1"></i>Lección completada</span>
                                 </div>
                             </div>
-                            <div class="col-auto ms-auto">
+                            <div class="col-12 col-md-auto lesson-progress-action">
                                 <button type="button" class="btn btn-success text-nowrap" disabled>
                                     <i class="bi bi-check2-circle me-1"></i> Completada
                                 </button>
@@ -295,5 +309,6 @@ require_once __DIR__ . '/includes/encabezado.php';
     <?php endif; ?>
     <script src="<?= URL_APP ?>/assets/js/leccion-progreso.js"></script>
 <?php endif; ?>
+<script src="<?= URL_APP ?>/assets/js/leccion-sidebar.js"></script>
 
 <?php require_once __DIR__ . '/includes/pie.php'; ?>

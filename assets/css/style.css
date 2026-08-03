@@ -427,3 +427,132 @@ body {
 .lesson-progress-done .lesson-progress-value {
     font-size: 0.95rem;
 }
+
+/* Vista de lección: sidebar móvil y progreso responsive */
+.lesson-sidebar-fab {
+    position: fixed;
+    bottom: 1.25rem;
+    left: 1rem;
+    z-index: 1035;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 1rem;
+    border: none;
+    border-radius: 999px;
+    background: var(--av-navy);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.25);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lesson-sidebar-fab:hover,
+.lesson-sidebar-fab:focus {
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.3);
+}
+
+.lesson-sidebar-fab i {
+    font-size: 1.1rem;
+}
+
+.lesson-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.lesson-sidebar-backdrop.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.lesson-sidebar-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--av-border);
+}
+
+body.lesson-sidebar-open {
+    overflow: hidden;
+}
+
+body.lesson-sidebar-open .lesson-sidebar-fab {
+    opacity: 0;
+    pointer-events: none;
+}
+
+@media (max-width: 991.98px) {
+    .lesson-sidebar-col {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 0;
+        height: 0;
+        padding: 0;
+        margin: 0;
+        overflow: visible;
+        z-index: 1050;
+    }
+
+    .lesson-sidebar-drawer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(320px, 88vw);
+        padding: 1rem;
+        background: #fff;
+        box-shadow: 4px 0 24px rgba(15, 23, 42, 0.15);
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform 0.28s ease;
+    }
+
+    .lesson-sidebar-drawer.is-open {
+        transform: translateX(0);
+    }
+
+    .lesson-main-col {
+        width: 100%;
+    }
+}
+
+@media (min-width: 992px) {
+    .lesson-sidebar-drawer {
+        position: static;
+        transform: none;
+        width: auto;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .lesson-progress-stack {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+
+    .lesson-progress-stack .lesson-progress-action {
+        margin-left: 0 !important;
+        margin-top: 0.25rem;
+    }
+
+    .lesson-progress-stack .lesson-progress-action .btn {
+        width: 100%;
+    }
+}
