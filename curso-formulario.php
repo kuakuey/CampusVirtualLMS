@@ -5,24 +5,20 @@ requiere_rol(['admin', 'teacher']);
 
 $usuario = usuario_actual();
 $id = (int) ($_GET['id'] ?? 0);
+$esNuevo = !$id;
+$curso = $id ? obtener_curso($id) : null;
 
-if (!$id) {
-    mensaje_flash('warning', 'Usa el botón «Nuevo curso» para crear un curso.');
-    redirigir('cursos.php');
-}
-
-$curso = obtener_curso($id);
-if (!$curso) {
+if (!$esNuevo && !$curso) {
     mensaje_flash('danger', 'Curso no encontrado.');
     redirigir('cursos.php');
 }
 
-$tituloPagina = 'Editar curso';
-
-if ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] !== (int) $usuario['id']) {
+if ($curso && $usuario['role'] === 'teacher' && (int) $curso['teacher_id'] !== (int) $usuario['id']) {
     mensaje_flash('danger', 'No puedes editar este curso.');
     redirigir('cursos.php');
 }
+
+$tituloPagina = $esNuevo ? 'Nuevo curso' : 'Editar curso';
 
 $categories = bd()->query('SELECT * FROM categories ORDER BY name')->fetchAll();
 $grupos = bd()->query('SELECT * FROM course_groups ORDER BY sort_order, name')->fetchAll();
@@ -32,13 +28,14 @@ if ($usuario['role'] === 'admin') {
 }
 
 $errors = [];
-$urlInscripcion = url_inscripcion_curso($curso);
+$codigoGenerado = generar_codigo_curso_unico();
+$urlInscripcion = $curso ? url_inscripcion_curso($curso) : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificar_csrf();
     $accion = $_POST['accion'] ?? 'guardar';
 
-    if ($accion === 'regenerar_enlace') {
+    if (!$esNuevo && $accion === 'regenerar_enlace') {
         $token = generar_token_inscripcion();
         $consulta = bd()->prepare('UPDATE courses SET enrollment_token = ? WHERE id = ?');
         $consulta->execute([$token, $id]);
@@ -58,10 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($title === '') $errors[] = 'El título es obligatorio.';
     if ($code === '') $errors[] = 'El código es obligatorio.';
+    if (!preg_match('/^CDA-[A-Z0-9]+$/', $code)) $errors[] = 'El código debe empezar por CDA-.';
     if (!in_array($estado, ['draft', 'published', 'archived'], true)) $estado = 'draft';
     if (!in_array($tipoInscripcion, ['public', 'password', 'url'], true)) $tipoInscripcion = 'public';
     if ($usuario['role'] === 'admin' && $teacherId <= 0) $errors[] = 'Selecciona un docente.';
-    if ($tipoInscripcion === 'password' && $claveInscripcion === '' && empty($curso['enrollment_password'])) {
+    if ($tipoInscripcion === 'password' && $claveInscripcion === '' && ($esNuevo || empty($curso['enrollment_password']))) {
         $errors[] = 'Define una contraseña de inscripción.';
     }
 
@@ -74,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $rutaDocumento = $curso['document_path'] ?? null;
-    if (!$errors) {
+    if (!$errors && !$esNuevo) {
         if (!empty($_POST['quitar_documento'])) {
             eliminar_archivo_subida($rutaDocumento);
             $rutaDocumento = null;
@@ -89,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
-        $claveHash = $curso['enrollment_password'] ?? null;
+        $claveHash = $esNuevo ? null : ($curso['enrollment_password'] ?? null);
         if ($tipoInscripcion === 'password') {
             if ($claveInscripcion !== '') {
                 $claveHash = password_hash($claveInscripcion, PASSWORD_DEFAULT);
@@ -98,30 +96,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $claveHash = null;
         }
 
-        $token = $curso['enrollment_token'] ?? null;
-        if ($tipoInscripcion === 'url') {
-            $token = asegurar_token_inscripcion_curso($id);
-        }
+        $token = generar_token_inscripcion();
 
-        $stmt = bd()->prepare(
-            'UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, document_path=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=? WHERE id=?'
-        );
-        $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $rutaDocumento, $estado, $tipoInscripcion, $claveHash, $token, $id]);
-        mensaje_flash('success', 'Curso actualizado.');
+        if ($esNuevo) {
+            $stmt = bd()->prepare(
+                'INSERT INTO courses (category_id, group_id, teacher_id, title, code, description, status, enrollment_type, enrollment_password, enrollment_token)
+                 VALUES (?,?,?,?,?,?,?,?,?,?)'
+            );
+            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token]);
+            $id = (int) bd()->lastInsertId();
+            mensaje_flash('success', 'Curso creado correctamente.');
+        } else {
+            if ($tipoInscripcion === 'url') {
+                $token = asegurar_token_inscripcion_curso($id);
+            } else {
+                $token = $curso['enrollment_token'] ?? null;
+            }
+            $stmt = bd()->prepare(
+                'UPDATE courses SET category_id=?, group_id=?, teacher_id=?, title=?, code=?, description=?, document_path=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=? WHERE id=?'
+            );
+            $stmt->execute([$idCategoria, $idGrupo, $teacherId, $title, $code, $description, $rutaDocumento, $estado, $tipoInscripcion, $claveHash, $token, $id]);
+            mensaje_flash('success', 'Curso actualizado.');
+        }
         redirigir('curso.php?id=' . $id);
     }
 
-    $curso = array_merge($curso, [
-        'title' => $title,
-        'code' => $code,
-        'description' => $description,
-        'category_id' => $idCategoria,
-        'group_id' => $idGrupo,
-        'status' => $estado,
-        'enrollment_type' => $tipoInscripcion,
-        'teacher_id' => $teacherId,
-    ]);
-    $urlInscripcion = url_inscripcion_curso($curso);
+    $codigoGenerado = $code;
+    if (!$esNuevo) {
+        $curso = array_merge($curso, [
+            'title' => $title,
+            'code' => $code,
+            'description' => $description,
+            'category_id' => $idCategoria,
+            'group_id' => $idGrupo,
+            'status' => $estado,
+            'enrollment_type' => $tipoInscripcion,
+            'teacher_id' => $teacherId,
+        ]);
+        $urlInscripcion = url_inscripcion_curso($curso);
+    }
+} elseif ($esNuevo) {
+    $_POST = [
+        'title' => '',
+        'code' => $codigoGenerado,
+        'description' => '',
+        'category_id' => '',
+        'group_id' => '',
+        'status' => 'draft',
+        'enrollment_type' => 'public',
+        'teacher_id' => $usuario['role'] === 'admin' ? '' : $usuario['id'],
+    ];
 } else {
     $_POST = $curso;
 }
@@ -131,10 +155,10 @@ require_once __DIR__ . '/includes/encabezado.php';
 
 <div class="page-header">
     <div>
-        <h1>Editar curso</h1>
-        <p class="subtitle">Configura la información y el método de inscripción</p>
+        <h1><?= escapar($tituloPagina) ?></h1>
+        <p class="subtitle"><?= $esNuevo ? 'Completa los datos para crear el curso' : 'Configura la información y el método de inscripción' ?></p>
     </div>
-    <a href="<?= URL_APP ?>/curso.php?id=<?= $id ?>" class="btn btn-outline-secondary">Volver al curso</a>
+    <a href="<?= URL_APP ?>/<?= $esNuevo ? 'cursos.php' : 'curso.php?id=' . $id ?>" class="btn btn-outline-secondary">Volver</a>
 </div>
 
 <div class="panel" style="max-width: 760px;">
@@ -148,11 +172,12 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="row g-3">
                 <div class="col-md-8">
                     <label class="form-label">Título</label>
-                    <input type="text" name="title" class="form-control" value="<?= escapar($_POST['title'] ?? '') ?>" required>
+                    <input type="text" name="title" class="form-control" value="<?= escapar($_POST['title'] ?? '') ?>" required autofocus>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Código</label>
-                    <input type="text" name="code" class="form-control" value="<?= escapar($_POST['code'] ?? '') ?>" required>
+                    <input type="text" name="code" class="form-control bg-light" value="<?= escapar($_POST['code'] ?? $codigoGenerado) ?>" readonly required>
+                    <small class="text-muted">Generado automáticamente</small>
                 </div>
                 <div class="col-12">
                     <label class="form-label">Descripción</label>
@@ -170,9 +195,10 @@ require_once __DIR__ . '/includes/encabezado.php';
 
                 <div class="col-12" id="campo-clave-inscripcion" style="display:none;">
                     <label class="form-label">Contraseña de inscripción</label>
-                    <input type="text" name="enrollment_password" class="form-control" placeholder="<?= !empty($curso['enrollment_password']) ? 'Dejar vacío para mantener la actual' : 'Contraseña requerida' ?>">
+                    <input type="text" name="enrollment_password" class="form-control" placeholder="<?= !$esNuevo && !empty($curso['enrollment_password']) ? 'Dejar vacío para mantener la actual' : 'Contraseña requerida' ?>">
                 </div>
 
+                <?php if (!$esNuevo): ?>
                 <div class="col-12" id="campo-url-inscripcion" style="display:none;">
                     <label class="form-label">Enlace de inscripción automática</label>
                     <div class="input-group">
@@ -195,6 +221,8 @@ require_once __DIR__ . '/includes/encabezado.php';
                         </div>
                     <?php endif; ?>
                 </div>
+                <?php endif; ?>
+
                 <div class="col-md-6">
                     <label class="form-label">Grupo de cursos</label>
                     <select name="group_id" class="form-select">
@@ -233,12 +261,12 @@ require_once __DIR__ . '/includes/encabezado.php';
                 </div>
                 <?php endif; ?>
                 <div class="col-12 d-flex gap-2 flex-wrap">
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                    <a href="<?= URL_APP ?>/curso.php?id=<?= $id ?>" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary"><?= $esNuevo ? 'Crear curso' : 'Guardar' ?></button>
+                    <a href="<?= URL_APP ?>/<?= $esNuevo ? 'cursos.php' : 'curso.php?id=' . $id ?>" class="btn btn-outline-secondary">Cancelar</a>
                 </div>
             </div>
         </form>
-        <?php if (($_POST['enrollment_type'] ?? $curso['enrollment_type'] ?? '') === 'url'): ?>
+        <?php if (!$esNuevo && ($curso['enrollment_type'] ?? '') === 'url'): ?>
         <form method="post" class="mt-3" onsubmit="return confirm('¿Generar un nuevo enlace? El anterior dejará de funcionar.');">
             <?= campo_csrf() ?>
             <input type="hidden" name="accion" value="regenerar_enlace">
@@ -255,8 +283,8 @@ require_once __DIR__ . '/includes/encabezado.php';
     const campoUrl = document.getElementById('campo-url-inscripcion');
     function actualizarCampos() {
         const v = select.value;
-        campoClave.style.display = v === 'password' ? '' : 'none';
-        campoUrl.style.display = v === 'url' ? '' : 'none';
+        if (campoClave) campoClave.style.display = v === 'password' ? '' : 'none';
+        if (campoUrl) campoUrl.style.display = v === 'url' ? '' : 'none';
     }
     select.addEventListener('change', actualizarCampos);
     actualizarCampos();

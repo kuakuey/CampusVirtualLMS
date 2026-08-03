@@ -261,36 +261,11 @@ function generar_token_inscripcion(): string
 function generar_codigo_curso_unico(): string
 {
     do {
-        $codigo = 'CUR-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
+        $codigo = 'CDA-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
         $consulta = bd()->prepare('SELECT id FROM courses WHERE code = ? LIMIT 1');
         $consulta->execute([$codigo]);
     } while ($consulta->fetch());
     return $codigo;
-}
-
-function resolver_docente_nuevo_curso(?array $usuario = null): int
-{
-    $usuario = $usuario ?? usuario_actual();
-    if ($usuario['role'] === 'teacher') {
-        return (int) $usuario['id'];
-    }
-    $consulta = bd()->query('SELECT id FROM users WHERE role = "teacher" AND status = 1 ORDER BY name LIMIT 1');
-    $docente = $consulta->fetch();
-    return $docente ? (int) $docente['id'] : (int) $usuario['id'];
-}
-
-function crear_curso_rapido(?array $usuario = null): int
-{
-    $usuario = $usuario ?? usuario_actual();
-    $docenteId = resolver_docente_nuevo_curso($usuario);
-    $codigo = generar_codigo_curso_unico();
-    $token = generar_token_inscripcion();
-    $consulta = bd()->prepare(
-        'INSERT INTO courses (teacher_id, title, code, status, enrollment_type, enrollment_token)
-         VALUES (?, ?, ?, ?, ?, ?)'
-    );
-    $consulta->execute([$docenteId, 'Nuevo curso', $codigo, 'draft', 'public', $token]);
-    return (int) bd()->lastInsertId();
 }
 
 function obtener_curso_por_token_inscripcion(string $token): ?array
