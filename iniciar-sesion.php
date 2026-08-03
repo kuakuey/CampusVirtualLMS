@@ -55,14 +55,9 @@ require_once __DIR__ . '/includes/encabezado.php';
             <button type="submit" class="btn btn-primary w-100 mb-3">Entrar</button>
         </form>
         <p class="text-center mb-3">¿No tienes cuenta? <a href="<?= URL_APP ?>/registrarse.php">Regístrate</a></p>
-        <div class="demo-accounts">
-            <strong>Cuentas demo</strong> (contraseña: <code>password123</code>)
-            <ul class="mb-0 mt-1 ps-3">
-                <li>admin@aulavirtual.com</li>
-                <li>docente@aulavirtual.com</li>
-                <li>estudiante@aulavirtual.com</li>
-            </ul>
-        </div>
+        <p class="text-center mb-0 small text-muted">
+            Usuario inicial: <code>admin@aulavirtual.com</code> · Contraseña: <code>password123</code>
+        </p>
     </div>
 </div>
 <?php require_once __DIR__ . '/includes/pie.php'; ?>

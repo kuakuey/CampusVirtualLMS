@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($accion === 'actualizar_tablas') {
-        $resultado = GestorBd::ejecutarMigracionesPendientes(false);
+        $resultado = GestorBd::ejecutarMigracionesPendientes(true);
         inst_mensaje($resultado['exito'] ? 'success' : 'danger', $resultado['mensaje']);
         inst_redirigir();
     }
@@ -93,17 +93,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             inst_redirigir();
         }
         $migrar = GestorBd::ejecutarMigracionesPendientes(false);
-        inst_mensaje($migrar['exito'] ? 'success' : 'danger', $migrar['mensaje']);
-        inst_redirigir();
-    }
-
-    if ($accion === 'instalar_con_demo') {
-        $crear = GestorBd::crearBaseDatos();
-        if (!$crear['exito']) {
-            inst_mensaje('danger', $crear['mensaje']);
-            inst_redirigir();
-        }
-        $migrar = GestorBd::ejecutarMigracionesPendientes(true);
         inst_mensaje($migrar['exito'] ? 'success' : 'danger', $migrar['mensaje']);
         inst_redirigir();
     }
@@ -197,7 +186,7 @@ $todoListo = $resumen['servidor']['exito'] && $resumen['bd_conectada'] && $resum
                         <button type="submit" class="btn btn-primary w-100 text-start" <?= !$resumen['existe_bd'] ? 'disabled' : '' ?>>
                             <i class="bi bi-arrow-repeat me-2"></i> Actualizar tablas
                             <?php
-                            $pendientesEstructura = array_filter($resumen['migraciones_pendientes'], fn ($f) => !str_contains($f, 'seed'));
+                            $pendientesEstructura = array_filter($resumen['migraciones_pendientes'], fn ($f) => !str_contains($f, 'datos_iniciales'));
                             if ($pendientesEstructura): ?>
                                 <span class="badge bg-warning text-dark ms-1"><?= count($pendientesEstructura) ?> pendiente(s)</span>
                             <?php endif; ?>
@@ -207,14 +196,7 @@ $todoListo = $resumen['servidor']['exito'] && $resumen['bd_conectada'] && $resum
                         <?= inst_campo_csrf() ?>
                         <input type="hidden" name="accion" value="instalacion_rapida">
                         <button type="submit" class="btn btn-success w-100 text-start" <?= !$resumen['servidor']['exito'] ? 'disabled' : '' ?>>
-                            <i class="bi bi-lightning-charge me-2"></i> Instalación rápida (BD + tablas)
-                        </button>
-                    </form>
-                    <form method="post" onsubmit="return confirm('¿Instalar con datos de demostración?');">
-                        <?= inst_campo_csrf() ?>
-                        <input type="hidden" name="accion" value="instalar_con_demo">
-                        <button type="submit" class="btn btn-outline-success w-100 text-start" <?= !$resumen['servidor']['exito'] ? 'disabled' : '' ?>>
-                            <i class="bi bi-box-seam me-2"></i> Instalar con datos demo
+                            <i class="bi bi-lightning-charge me-2"></i> Instalación completa (BD + tablas + admin)
                         </button>
                     </form>
                 </div>

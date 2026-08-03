@@ -40,13 +40,16 @@ Sistema de gestión de aprendizaje (tipo Moodle) desarrollado en **PHP + MySQL +
    http://localhost/AulaVirtual
    ```
 
-## Cuentas demo
+## Cuenta inicial
 
-| Rol           | Correo                      | Contraseña    |
-|---------------|-----------------------------|---------------|
-| Administrador | admin@aulavirtual.com       | password123   |
-| Docente       | docente@aulavirtual.com     | password123   |
-| Estudiante    | estudiante@aulavirtual.com  | password123   |
+Tras la instalación, entra con:
+
+| Campo | Valor |
+|-------|-------|
+| Correo | `admin@aulavirtual.com` |
+| Contraseña | `password123` |
+
+Desde el panel de administración puedes crear docentes, estudiantes, categorías y cursos.
 
 ## URLs principales
 

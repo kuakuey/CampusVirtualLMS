@@ -169,11 +169,11 @@ class GestorBd
         }
     }
 
-    public static function ejecutarMigracionesPendientes(bool $incluirDemo = true): array
+    public static function ejecutarMigracionesPendientes(bool $soloEstructura = false): array
     {
         $pendientes = self::obtenerMigracionesPendientes();
-        if (!$incluirDemo) {
-            $pendientes = array_values(array_filter($pendientes, fn ($f) => !str_contains($f, 'seed')));
+        if ($soloEstructura) {
+            $pendientes = array_values(array_filter($pendientes, fn ($f) => !str_contains($f, 'datos_iniciales')));
         }
         if (!$pendientes) {
             return ['exito' => true, 'mensaje' => 'No hay migraciones pendientes.', 'resultados' => []];
