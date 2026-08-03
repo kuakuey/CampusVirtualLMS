@@ -485,6 +485,48 @@ function iniciales(string $nombre): string
     return $letras ?: '?';
 }
 
+function url_avatar_usuario(?string $avatar): ?string
+{
+    if (!$avatar) {
+        return null;
+    }
+    $ruta = RUTA_SUBIDAS . '/' . ltrim($avatar, '/');
+    if (!is_file($ruta)) {
+        return null;
+    }
+    return url_documento_publico($avatar);
+}
+
+function renderizar_avatar_usuario(array $usuario, int $size = 40, string $clasesExtra = ''): string
+{
+    $nombre = $usuario['name'] ?? '';
+    $url = url_avatar_usuario($usuario['avatar'] ?? null);
+    $fontSize = max(0.65, round($size / 28, 2));
+    $style = 'width:' . $size . 'px;height:' . $size . 'px;font-size:' . $fontSize . 'rem;';
+    $clases = trim('user-avatar ' . $clasesExtra);
+
+    if ($url) {
+        return '<span class="' . escapar($clases) . ' user-avatar-photo" style="' . escapar($style) . '">'
+            . '<img src="' . escapar($url) . '" alt="' . escapar($nombre) . '">'
+            . '</span>';
+    }
+
+    return '<span class="' . escapar($clases) . '" style="' . escapar($style) . '">' . escapar(iniciales($nombre)) . '</span>';
+}
+
+function sincronizar_sesion_usuario(int $idUsuario): void
+{
+    if (!esta_logueado() || (int) ($_SESSION['usuario']['id'] ?? 0) !== $idUsuario) {
+        return;
+    }
+    $stmt = bd()->prepare('SELECT id, name, email, role, avatar, bio, status, created_at FROM users WHERE id = ? LIMIT 1');
+    $stmt->execute([$idUsuario]);
+    $usuario = $stmt->fetch();
+    if ($usuario) {
+        $_SESSION['usuario'] = $usuario;
+    }
+}
+
 function subir_archivo(array $archivo, string $subcarpeta = 'archivos'): ?string
 {
     if (($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {

@@ -22,10 +22,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $stmt = bd()->prepare('UPDATE users SET name=?, bio=? WHERE id=?');
             $stmt->execute([$name, $bio, $usuario['id']]);
-            $_SESSION['usuario']['name'] = $name;
-            $_SESSION['usuario']['bio'] = $bio;
+            sincronizar_sesion_usuario((int) $usuario['id']);
             mensaje_flash('success', 'Perfil actualizado.');
             redirigir('perfil.php');
+        }
+    }
+
+    if ($action === 'avatar') {
+        if (!empty($_POST['eliminar_avatar'])) {
+            eliminar_archivo_subida($profile['avatar'] ?? null);
+            $stmt = bd()->prepare('UPDATE users SET avatar = NULL WHERE id = ?');
+            $stmt->execute([$usuario['id']]);
+            sincronizar_sesion_usuario((int) $usuario['id']);
+            mensaje_flash('success', 'Foto de perfil eliminada.');
+            redirigir('perfil.php');
+        }
+
+        if (!empty($_FILES['avatar']['name'])) {
+            $extension = strtolower(pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION));
+            $extensionesImagen = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+            if (!in_array($extension, $extensionesImagen, true)) {
+                $errors[] = 'La foto debe ser JPG, PNG, GIF o WebP.';
+            } else {
+                $nuevoAvatar = subir_archivo($_FILES['avatar'], 'avatars');
+                if (!$nuevoAvatar) {
+                    $errors[] = 'No se pudo subir la imagen. Verifica el tamaño e inténtalo de nuevo.';
+                } else {
+                    eliminar_archivo_subida($profile['avatar'] ?? null);
+                    $stmt = bd()->prepare('UPDATE users SET avatar = ? WHERE id = ?');
+                    $stmt->execute([$nuevoAvatar, $usuario['id']]);
+                    sincronizar_sesion_usuario((int) $usuario['id']);
+                    mensaje_flash('success', 'Foto de perfil actualizada.');
+                    redirigir('perfil.php');
+                }
+            }
+        } elseif (empty($_POST['eliminar_avatar'])) {
+            $errors[] = 'Selecciona una imagen para subir.';
         }
     }
 
@@ -66,11 +98,28 @@ require_once __DIR__ . '/includes/encabezado.php';
     <div class="col-lg-4">
         <div class="panel">
             <div class="panel-body text-center py-4">
-                <div class="user-avatar mx-auto mb-3" style="width:72px;height:72px;font-size:1.4rem;"><?= escapar(iniciales($profile['name'])) ?></div>
+                <?= renderizar_avatar_usuario($profile, 96, 'mx-auto mb-3 profile-avatar-lg') ?>
                 <h2 class="h5 mb-1"><?= escapar($profile['name']) ?></h2>
                 <div class="mb-2"><?= insignia_rol($profile['role']) ?></div>
                 <p class="text-muted small mb-0"><?= escapar($profile['email']) ?></p>
                 <p class="text-muted small">Miembro desde <?= formatear_fecha($profile['created_at']) ?></p>
+
+                <form method="post" enctype="multipart/form-data" class="text-start mt-4 pt-3 border-top">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="avatar">
+                    <label class="form-label small fw-semibold" for="avatar">Foto de perfil</label>
+                    <input type="file" id="avatar" name="avatar" class="form-control form-control-sm mb-2" accept="image/jpeg,image/png,image/gif,image/webp">
+                    <small class="text-muted d-block mb-2">JPG, PNG, GIF o WebP.</small>
+                    <button class="btn btn-sm btn-primary w-100" type="submit">Subir foto</button>
+                </form>
+                <?php if (!empty($profile['avatar'])): ?>
+                <form method="post" class="mt-2" onsubmit="return confirm('¿Quitar tu foto de perfil?');">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="avatar">
+                    <input type="hidden" name="eliminar_avatar" value="1">
+                    <button class="btn btn-sm btn-outline-danger w-100" type="submit">Quitar foto</button>
+                </form>
+                <?php endif; ?>
             </div>
         </div>
     </div>

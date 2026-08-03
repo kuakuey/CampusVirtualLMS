@@ -58,6 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($accion === 'eliminar_usuario') {
         $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
         if ($idUsuario !== (int) usuario_actual()['id']) {
+            $consultaAvatar = bd()->prepare('SELECT avatar FROM users WHERE id = ?');
+            $consultaAvatar->execute([$idUsuario]);
+            if ($filaAvatar = $consultaAvatar->fetch()) {
+                eliminar_archivo_subida($filaAvatar['avatar'] ?? null);
+            }
             $consulta = bd()->prepare('DELETE FROM users WHERE id = ?');
             $consulta->execute([$idUsuario]);
             mensaje_flash('success', 'Usuario eliminado.');
@@ -135,7 +140,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <span class="user-avatar" style="width:34px;height:34px;font-size:0.75rem;"><?= escapar(iniciales($u['name'])) ?></span>
+                                <?= renderizar_avatar_usuario($u, 34) ?>
                                 <div>
                                     <strong><?= escapar($u['name']) ?></strong>
                                     <div class="small text-muted"><?= escapar($u['email']) ?></div>

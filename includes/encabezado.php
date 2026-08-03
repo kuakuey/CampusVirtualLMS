@@ -59,7 +59,7 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
             <div class="d-flex align-items-center gap-3">
                 <div class="dropdown">
                     <a class="d-flex align-items-center gap-2 text-decoration-none text-white dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                        <span class="user-avatar"><?= escapar(iniciales($usuario['name'])) ?></span>
+                        <?= renderizar_avatar_usuario($usuario) ?>
                         <span class="d-none d-md-inline small">
                             <strong><?= escapar($usuario['name']) ?></strong><br>
                             <span class="opacity-75"><?= escapar(etiqueta_rol($usuario['role'])) ?></span>
