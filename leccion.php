@@ -110,13 +110,13 @@ require_once __DIR__ . '/includes/encabezado.php';
     <div class="col-lg-3 lesson-sidebar-col">
         <div class="lesson-sidebar-drawer" id="lesson-sidebar-drawer">
             <div class="lesson-sidebar-drawer-header d-lg-none">
-                <span class="fw-semibold">Contenido del curso</span>
+                <span class="fw-semibold">Lecciones</span>
                 <button type="button" class="btn btn-sm btn-light border" id="btn-cerrar-lecciones" aria-label="Cerrar menú">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
             <div class="sidebar-course">
-            <div class="panel-header">
+            <div class="panel-header lesson-sidebar-meta d-none d-lg-block">
                 <h3 class="mb-0"><?= escapar($lesson['course_title']) ?></h3>
                 <?php if ($mostrarProgreso): ?>
                     <div class="mt-2">
@@ -192,7 +192,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php endif; ?>
             </div>
             </div>
-            <a href="<?= escapar($urlVolverCurso) ?>" class="btn btn-outline-secondary w-100 mt-3 lesson-sidebar-back">
+            <a href="<?= escapar($urlVolverCurso) ?>" class="btn btn-outline-secondary w-100 mt-3 lesson-sidebar-back d-none d-lg-block">
                 <i class="bi bi-arrow-left me-1"></i> Volver al curso
             </a>
         </div>
