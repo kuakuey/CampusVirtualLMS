@@ -23,6 +23,8 @@ if (!$curso || !puede_acceder_curso($curso)) {
     redirigir('cursos.php');
 }
 
+$esPropietario = es_propietario_curso($curso, $usuario);
+
 $siblings = bd()->prepare('SELECT id, title, sort_order FROM lessons WHERE course_id = ? ORDER BY sort_order, id');
 $siblings->execute([(int) $lesson['course_id']]);
 $siblings = $siblings->fetchAll();
@@ -61,6 +63,9 @@ require_once __DIR__ . '/includes/encabezado.php';
         <div class="panel">
             <div class="panel-header">
                 <h2><?= escapar($lesson['title']) ?></h2>
+                <?php if ($esPropietario): ?>
+                    <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= $id ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
+                <?php endif; ?>
             </div>
             <div class="panel-body">
                 <?php if ($lesson['video_url']): ?>

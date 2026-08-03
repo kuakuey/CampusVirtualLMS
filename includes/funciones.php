@@ -160,6 +160,29 @@ function obtener_curso(int $id): ?array
     return $curso ?: null;
 }
 
+function obtener_leccion(int $id): ?array
+{
+    $consulta = bd()->prepare(
+        'SELECT l.*, c.title AS course_title, c.teacher_id, c.id AS course_id
+         FROM lessons l
+         JOIN courses c ON c.id = l.course_id
+         WHERE l.id = ?'
+    );
+    $consulta->execute([$id]);
+    $leccion = $consulta->fetch();
+    return $leccion ?: null;
+}
+
+function es_propietario_curso(array $curso, ?array $usuario = null): bool
+{
+    $usuario = $usuario ?? usuario_actual();
+    if (!$usuario) {
+        return false;
+    }
+    return $usuario['role'] === 'admin'
+        || ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']);
+}
+
 function contar_consulta(string $sql, array $parametros = []): int
 {
     $consulta = bd()->prepare($sql);

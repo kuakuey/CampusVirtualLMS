@@ -34,7 +34,7 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= in_array($paginaActual, ['cursos.php','curso.php','leccion.php'], true) ? 'active' : '' ?>" href="<?= URL_CURSOS ?>">
+                    <a class="nav-link <?= in_array($paginaActual, ['cursos.php','curso.php','leccion.php','leccion-formulario.php'], true) ? 'active' : '' ?>" href="<?= URL_CURSOS ?>">
                         <i class="bi bi-journal-bookmark me-1"></i> Cursos
                     </a>
                 </li>

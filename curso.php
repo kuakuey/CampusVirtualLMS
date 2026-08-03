@@ -333,6 +333,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                             <div class="d-flex gap-2">
                                 <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-primary">Ver</a>
                                 <?php if ($esPropietario): ?>
+                                <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
                                 <form method="post" onsubmit="return confirm('¿Eliminar lección?');">
                                     <?= campo_csrf() ?>
                                     <input type="hidden" name="accion" value="eliminar_leccion">

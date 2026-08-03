@@ -53,6 +53,7 @@ define('URL_CURSO', URL_APP . '/curso.php');
 define('URL_CURSO_FORMULARIO', URL_APP . '/curso-formulario.php');
 define('URL_CATALOGO', URL_APP . '/catalogo.php');
 define('URL_LECCION', URL_APP . '/leccion.php');
+define('URL_LECCION_FORMULARIO', URL_APP . '/leccion-formulario.php');
 define('URL_PERFIL', URL_APP . '/perfil.php');
 define('URL_INSTALACION', URL_APP . '/instalacion.php');
 define('URL_USUARIOS', URL_APP . '/admin/usuarios.php');
