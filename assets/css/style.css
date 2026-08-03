@@ -57,6 +57,16 @@ body {
     padding: 0.45rem 0.8rem !important;
 }
 
+.navbar .app-main-nav {
+    gap: 8px;
+}
+
+@media (min-width: 992px) {
+    .navbar .app-main-nav {
+        flex-direction: row;
+    }
+}
+
 .navbar .nav-link.active,
 .navbar .nav-link:hover {
     background: rgba(255, 255, 255, 0.12);

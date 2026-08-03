@@ -27,24 +27,22 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navPrincipal">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 app-main-nav">
                 <li class="nav-item">
                     <a class="nav-link <?= $paginaActual === 'panel.php' ? 'active' : '' ?>" href="<?= URL_PANEL ?>">
                         <i class="bi bi-speedometer2 me-1"></i> Panel
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= in_array($paginaActual, ['cursos.php','curso.php','leccion.php','leccion-formulario.php'], true) ? 'active' : '' ?>" href="<?= URL_CURSOS ?>">
+                    <a class="nav-link <?= in_array($paginaActual, ['cursos.php','curso.php','leccion.php','leccion-formulario.php','curso-formulario.php'], true) ? 'active' : '' ?>" href="<?= URL_CURSOS ?>">
                         <i class="bi bi-journal-bookmark me-1"></i> Cursos
                     </a>
                 </li>
-                <?php if ($usuario['role'] === 'student'): ?>
                 <li class="nav-item">
-                    <a class="nav-link <?= $paginaActual === 'catalogo.php' ? 'active' : '' ?>" href="<?= URL_CATALOGO ?>">
-                        <i class="bi bi-grid me-1"></i> Catálogo
+                    <a class="nav-link <?= $paginaActual === 'perfil.php' ? 'active' : '' ?>" href="<?= URL_PERFIL ?>">
+                        <i class="bi bi-person me-1"></i> Perfil
                     </a>
                 </li>
-                <?php endif; ?>
                 <?php if ($usuario['role'] === 'admin'): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= in_array($paginaActual, ['usuarios.php','categorias.php'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">
@@ -68,8 +66,6 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
                         </span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="<?= URL_PERFIL ?>"><i class="bi bi-person me-2"></i>Mi perfil</a></li>
-                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item text-danger" href="<?= URL_CERRAR_SESION ?>"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</a></li>
                     </ul>
                 </div>

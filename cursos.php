@@ -70,9 +70,6 @@ require_once __DIR__ . '/includes/encabezado.php';
         <p class="subtitle"><?= count($cursos) ?> curso(s) encontrado(s)</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <?php if ($usuario['role'] === 'student'): ?>
-            <a href="<?= URL_APP ?>/catalogo.php" class="btn btn-outline-primary"><i class="bi bi-grid me-1"></i> Catálogo</a>
-        <?php endif; ?>
         <?php if (in_array($usuario['role'], ['admin', 'teacher'], true)): ?>
             <a href="<?= URL_APP ?>/curso-formulario.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo curso</a>
         <?php endif; ?>

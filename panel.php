@@ -104,9 +104,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <p class="subtitle">Resumen de tu actividad en <?= escapar(NOMBRE_APP) ?></p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <?php if ($usuario['role'] === 'student'): ?>
-            <a href="<?= URL_APP ?>/catalogo.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Explorar cursos</a>
-        <?php elseif (in_array($usuario['role'], ['admin', 'teacher'], true)): ?>
+        <?php if (in_array($usuario['role'], ['admin', 'teacher'], true)): ?>
             <a href="<?= URL_APP ?>/curso-formulario.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo curso</a>
         <?php endif; ?>
     </div>
@@ -135,10 +133,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php if (!$cursosRecientes): ?>
                     <div class="empty-state">
                         <i class="bi bi-journal-x"></i>
-                        <p class="mb-2">No hay cursos para mostrar.</p>
-                        <?php if ($usuario['role'] === 'student'): ?>
-                            <a href="<?= URL_APP ?>/catalogo.php" class="btn btn-primary btn-sm">Ir al catálogo</a>
-                        <?php endif; ?>
+                        <p class="mb-0">No hay cursos para mostrar.</p>
                     </div>
                 <?php else: ?>
                     <div class="row g-3">
