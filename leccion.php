@@ -32,6 +32,7 @@ $idsCompletadas = $mostrarProgreso ? obtener_ids_lecciones_completadas($idCurso,
 $tipoVideo = tipo_video_leccion($lesson['video_url'] ?? null);
 $youtubeId = id_video_youtube($lesson['video_url'] ?? null);
 $tiempoRequerido = 600;
+$videoConSeguimiento = $mostrarProgreso && !$leccionCompletada && in_array($tipoVideo, ['youtube', 'html5'], true);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['ajax'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -71,7 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['ajax'])) {
     exit;
 }
 
-reiniciar_tiempo_video_leccion($id);
+if ($mostrarProgreso) {
+    reiniciar_tiempo_video_leccion($id);
+}
 
 $siblings = bd()->prepare('SELECT id, title, sort_order FROM lessons WHERE course_id = ? ORDER BY sort_order, id');
 $siblings->execute([$idCurso]);
@@ -197,9 +200,15 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php if ($lesson['video_url']): ?>
                     <div class="mb-4 rounded overflow-hidden">
                         <?php if ($tipoVideo === 'youtube'): ?>
-                            <div id="yt-player" class="ratio ratio-16x9 bg-dark"></div>
+                            <div class="ratio ratio-16x9 bg-dark">
+                                <?php if ($videoConSeguimiento): ?>
+                                    <div id="yt-player"></div>
+                                <?php else: ?>
+                                    <iframe src="<?= escapar('https://www.youtube.com/embed/' . $youtubeId) ?>" allowfullscreen title="Video de la lección"></iframe>
+                                <?php endif; ?>
+                            </div>
                         <?php elseif ($tipoVideo === 'html5'): ?>
-                            <video id="lesson-video" class="w-100 rounded border" controls playsinline preload="metadata">
+                            <video <?= $videoConSeguimiento ? 'id="lesson-video"' : '' ?> class="w-100 rounded border" controls playsinline preload="metadata">
                                 <source src="<?= escapar($lesson['video_url']) ?>">
                                 Tu navegador no soporta la reproducción de video.
                             </video>
@@ -231,7 +240,7 @@ require_once __DIR__ . '/includes/encabezado.php';
     </div>
 </div>
 
-<?php if ($mostrarProgreso && !$leccionCompletada && in_array($tipoVideo, ['youtube', 'html5'], true)): ?>
+<?php if ($videoConSeguimiento): ?>
     <?php if ($tipoVideo === 'youtube'): ?>
     <script src="https://www.youtube.com/iframe_api"></script>
     <?php endif; ?>
