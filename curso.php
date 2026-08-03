@@ -472,17 +472,17 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <div class="empty-state"><i class="bi bi-journal"></i><p class="mb-0">Aún no hay contenido.<?= $esPropietario ? ' Agrega un módulo o una lección.' : '' ?></p></div>
                 <?php else: ?>
                     <?php if ($mostrarSubcursos): ?>
-                    <ul class="nav nav-tabs flex-nowrap overflow-auto mb-3" role="tablist">
-                        <?php foreach ($subcursos as $subcurso): ?>
-                            <?php $idSub = (int) $subcurso['id']; ?>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link <?= $idModuloActivo === $idSub ? 'active' : '' ?>"
-                                   href="?id=<?= $id ?>&pestaña=lecciones&modulo=<?= $idSub ?>">
+                    <div class="mb-3 course-materia-field">
+                        <label class="form-label fw-semibold mb-1" for="selector-materia">Materia</label>
+                        <select id="selector-materia" class="form-select course-materia-select">
+                            <?php foreach ($subcursos as $subcurso): ?>
+                                <?php $idSub = (int) $subcurso['id']; ?>
+                                <option value="<?= $idSub ?>" <?= $idModuloActivo === $idSub ? 'selected' : '' ?>>
                                     <?= escapar($subcurso['title']) ?>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
 
                     <?php if ($esPropietario && $subcursoActivo): ?>
                     <div class="d-flex justify-content-end gap-2 flex-wrap mb-3">
@@ -596,7 +596,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <input type="hidden" name="accion" value="agregar_leccion">
                     <?php if ($mostrarSubcursos): ?>
                     <div class="mb-3">
-                        <label class="form-label">Módulo</label>
+                        <label class="form-label">Materia</label>
                         <select name="subcourse_id" class="form-select" required>
                             <?php foreach ($subcursos as $subcurso): ?>
                                 <option value="<?= (int) $subcurso['id'] ?>" <?= $idModuloActivo === (int) $subcurso['id'] ? 'selected' : '' ?>>
@@ -634,6 +634,9 @@ require_once __DIR__ . '/includes/encabezado.php';
 <?php if ($esPropietario): ?>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="<?= URL_APP ?>/assets/js/lecciones-orden.js"></script>
+<?php endif; ?>
+<?php if ($mostrarSubcursos): ?>
+<script src="<?= URL_APP ?>/assets/js/curso-materia.js"></script>
 <?php endif; ?>
 
 <?php elseif ($pestaña === 'tareas'): ?>
