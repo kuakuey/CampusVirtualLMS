@@ -149,31 +149,39 @@ require_once __DIR__ . '/includes/encabezado.php';
                          data-completada="0"
                          data-csrf="<?= escapar(token_csrf()) ?>"
                          data-url="<?= escapar(URL_APP . '/leccion.php?id=' . $id) ?>">
-                        <div class="lesson-progress-row">
-                            <div class="lesson-progress-time">
-                                <span class="lesson-progress-label">Tiempo de video</span>
-                                <span class="lesson-progress-value" id="video-tiempo-texto">0:00 / 10:00</span>
-                                <div class="progress lesson-progress-bar">
+                        <div class="lesson-progress-row row align-items-center g-3 flex-nowrap">
+                            <div class="col min-w-0">
+                                <div class="d-flex align-items-baseline flex-wrap gap-2">
+                                    <span class="lesson-progress-label mb-0">Tiempo de video</span>
+                                    <span class="lesson-progress-value" id="video-tiempo-texto">0:00 / 10:00</span>
+                                </div>
+                                <div class="progress lesson-progress-bar mt-2">
                                     <div id="video-tiempo-barra" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                             </div>
-                            <button type="button" id="btn-marcar-completada" class="btn btn-success" disabled>
-                                <i class="bi bi-check2-circle me-1"></i> Marcar como completada
-                            </button>
+                            <div class="col-auto ms-auto">
+                                <button type="button" id="btn-marcar-completada" class="btn btn-success text-nowrap" disabled>
+                                    <i class="bi bi-check2-circle me-1"></i> Marcar como completada
+                                </button>
+                            </div>
                         </div>
                     </div>
                 <?php elseif ($mostrarProgreso && $leccionCompletada): ?>
                     <div id="lesson-progress" class="lesson-progress-box mb-4 lesson-progress-done"
                          data-completada="1"
                          data-video-type="<?= escapar($tipoVideo) ?>">
-                        <div class="lesson-progress-row">
-                            <div class="lesson-progress-time">
-                                <span class="lesson-progress-label">Tiempo de video</span>
-                                <span class="lesson-progress-value text-success"><i class="bi bi-check-circle-fill me-1"></i>Lección completada</span>
+                        <div class="lesson-progress-row row align-items-center g-3 flex-nowrap">
+                            <div class="col min-w-0">
+                                <div class="d-flex align-items-baseline flex-wrap gap-2">
+                                    <span class="lesson-progress-label mb-0">Tiempo de video</span>
+                                    <span class="lesson-progress-value text-success"><i class="bi bi-check-circle-fill me-1"></i>Lección completada</span>
+                                </div>
                             </div>
-                            <button type="button" class="btn btn-success" disabled>
-                                <i class="bi bi-check2-circle me-1"></i> Completada
-                            </button>
+                            <div class="col-auto ms-auto">
+                                <button type="button" class="btn btn-success text-nowrap" disabled>
+                                    <i class="bi bi-check2-circle me-1"></i> Completada
+                                </button>
+                            </div>
                         </div>
                     </div>
                 <?php elseif ($mostrarProgreso && $tipoVideo === 'externo'): ?>
