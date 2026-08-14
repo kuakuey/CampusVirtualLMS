@@ -460,6 +460,19 @@ require_once __DIR__ . '/includes/encabezado.php';
         </a>
     </li>
     <?php endforeach; ?>
+    <?php if ($esPropietario): ?>
+    <li class="nav-item">
+        <a class="nav-link" href="<?= URL_ASISTENCIA ?>?vista=tomar&curso=<?= $id ?>">
+            <i class="bi bi-calendar-check me-1"></i>Asistencia
+        </a>
+    </li>
+    <?php elseif ($matriculado): ?>
+    <li class="nav-item">
+        <a class="nav-link" href="<?= URL_ASISTENCIA ?>?vista=reportes&curso=<?= $id ?>">
+            <i class="bi bi-calendar-check me-1"></i>Asistencia
+        </a>
+    </li>
+    <?php endif; ?>
 </ul>
 
 <?php if ($pestaña === 'lecciones'): ?>
@@ -857,7 +870,12 @@ require_once __DIR__ . '/includes/encabezado.php';
 
 <?php elseif ($pestaña === 'estudiantes' && $esPropietario): ?>
 <div class="panel">
-    <div class="panel-header"><h2>Estudiantes inscritos (<?= count($estudiantes) ?>)</h2></div>
+    <div class="panel-header">
+        <h2>Estudiantes inscritos (<?= count($estudiantes) ?>)</h2>
+        <a href="<?= URL_ASISTENCIA ?>?vista=tomar&curso=<?= $id ?>" class="btn btn-sm btn-primary">
+            <i class="bi bi-calendar-check me-1"></i> Tomar asistencia
+        </a>
+    </div>
     <div class="panel-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">

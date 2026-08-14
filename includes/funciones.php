@@ -468,6 +468,179 @@ function registrar_tiempo_video_leccion(int $idLeccion, int $segundos): int
     return $_SESSION['tiempo_video_leccion'][$idLeccion];
 }
 
+function etiqueta_asistencia(string $estado): string
+{
+    switch ($estado) {
+        case 'present': return 'Presente';
+        case 'absent': return 'Ausente';
+        case 'late': return 'Tarde';
+        case 'excused': return 'Justificado';
+        default: return $estado;
+    }
+}
+
+function insignia_asistencia(string $estado): string
+{
+    switch ($estado) {
+        case 'present': $clase = 'bg-success'; break;
+        case 'absent': $clase = 'bg-danger'; break;
+        case 'late': $clase = 'bg-warning text-dark'; break;
+        case 'excused': $clase = 'bg-info text-dark'; break;
+        default: $clase = 'bg-secondary';
+    }
+    return '<span class="badge ' . $clase . '">' . escapar(etiqueta_asistencia($estado)) . '</span>';
+}
+
+function estados_asistencia(): array
+{
+    return ['present', 'absent', 'late', 'excused'];
+}
+
+function puede_gestionar_asistencia(array $curso, ?array $usuario = null): bool
+{
+    return es_propietario_curso($curso, $usuario);
+}
+
+function cursos_para_asistencia(array $usuario): array
+{
+    if ($usuario['role'] === 'admin') {
+        $consulta = bd()->query('SELECT id, title, code FROM courses ORDER BY title');
+        return $consulta->fetchAll();
+    }
+    if ($usuario['role'] === 'teacher') {
+        $consulta = bd()->prepare('SELECT id, title, code FROM courses WHERE teacher_id = ? ORDER BY title');
+        $consulta->execute([$usuario['id']]);
+        return $consulta->fetchAll();
+    }
+    $consulta = bd()->prepare(
+        'SELECT c.id, c.title, c.code
+         FROM courses c
+         JOIN enrollments e ON e.course_id = c.id
+         WHERE e.student_id = ? AND e.status = "active"
+         ORDER BY c.title'
+    );
+    $consulta->execute([$usuario['id']]);
+    return $consulta->fetchAll();
+}
+
+function estudiantes_activos_curso(int $idCurso): array
+{
+    $consulta = bd()->prepare(
+        'SELECT u.id, u.name, u.email, u.avatar
+         FROM enrollments e
+         JOIN users u ON u.id = e.student_id
+         WHERE e.course_id = ? AND e.status = "active"
+         ORDER BY u.name'
+    );
+    $consulta->execute([$idCurso]);
+    return $consulta->fetchAll();
+}
+
+function asistencias_por_fecha(int $idCurso, string $fecha): array
+{
+    $consulta = bd()->prepare(
+        'SELECT student_id, status FROM attendances WHERE course_id = ? AND attendance_date = ?'
+    );
+    $consulta->execute([$idCurso, $fecha]);
+    $mapa = [];
+    foreach ($consulta->fetchAll() as $fila) {
+        $mapa[(int) $fila['student_id']] = $fila['status'];
+    }
+    return $mapa;
+}
+
+function guardar_asistencias(int $idCurso, string $fecha, array $estados, int $registradoPor): int
+{
+    $permitidos = estudiantes_activos_curso($idCurso);
+    $idsValidos = array_map('intval', array_column($permitidos, 'id'));
+    $guardar = bd()->prepare(
+        'INSERT INTO attendances (course_id, student_id, attendance_date, status, recorded_by)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE status = VALUES(status), recorded_by = VALUES(recorded_by)'
+    );
+    $guardados = 0;
+    foreach ($estados as $idEstudiante => $estado) {
+        $idEstudiante = (int) $idEstudiante;
+        if (!in_array($idEstudiante, $idsValidos, true) || !in_array($estado, estados_asistencia(), true)) {
+            continue;
+        }
+        $guardar->execute([$idCurso, $idEstudiante, $fecha, $estado, $registradoPor]);
+        $guardados++;
+    }
+    return $guardados;
+}
+
+function reporte_asistencia_estudiantes(int $idCurso, string $desde, string $hasta): array
+{
+    $consulta = bd()->prepare(
+        'SELECT u.id, u.name, u.email, u.avatar,
+                COUNT(a.id) AS total,
+                SUM(a.status = "present") AS presentes,
+                SUM(a.status = "absent") AS ausentes,
+                SUM(a.status = "late") AS tardes,
+                SUM(a.status = "excused") AS justificados
+         FROM enrollments e
+         JOIN users u ON u.id = e.student_id
+         LEFT JOIN attendances a ON a.student_id = u.id AND a.course_id = e.course_id
+              AND a.attendance_date BETWEEN ? AND ?
+         WHERE e.course_id = ? AND e.status = "active"
+         GROUP BY u.id, u.name, u.email, u.avatar
+         ORDER BY u.name'
+    );
+    $consulta->execute([$desde, $hasta, $idCurso]);
+    return $consulta->fetchAll();
+}
+
+function reporte_asistencia_fechas(int $idCurso, string $desde, string $hasta): array
+{
+    $consulta = bd()->prepare(
+        'SELECT attendance_date,
+                COUNT(*) AS total,
+                SUM(status = "present") AS presentes,
+                SUM(status = "absent") AS ausentes,
+                SUM(status = "late") AS tardes,
+                SUM(status = "excused") AS justificados
+         FROM attendances
+         WHERE course_id = ? AND attendance_date BETWEEN ? AND ?
+         GROUP BY attendance_date
+         ORDER BY attendance_date DESC'
+    );
+    $consulta->execute([$idCurso, $desde, $hasta]);
+    return $consulta->fetchAll();
+}
+
+function reporte_asistencia_propia(int $idEstudiante, int $idCurso, string $desde, string $hasta): array
+{
+    $consulta = bd()->prepare(
+        'SELECT attendance_date, status
+         FROM attendances
+         WHERE student_id = ? AND course_id = ? AND attendance_date BETWEEN ? AND ?
+         ORDER BY attendance_date DESC'
+    );
+    $consulta->execute([$idEstudiante, $idCurso, $desde, $hasta]);
+    return $consulta->fetchAll();
+}
+
+function porcentaje_asistencia(int $presentes, int $tardes, int $justificados, int $total): int
+{
+    if ($total <= 0) {
+        return 0;
+    }
+    return (int) round((($presentes + $tardes + $justificados) / $total) * 100);
+}
+
+function fecha_asistencia_valida(?string $fecha): ?string
+{
+    if (!$fecha) {
+        return null;
+    }
+    $dt = DateTime::createFromFormat('Y-m-d', $fecha);
+    if (!$dt || $dt->format('Y-m-d') !== $fecha) {
+        return null;
+    }
+    return $fecha;
+}
+
 function contar_consulta(string $sql, array $parametros = []): int
 {
     $consulta = bd()->prepare($sql);
