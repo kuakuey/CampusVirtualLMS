@@ -621,6 +621,50 @@ function reporte_asistencia_propia(int $idEstudiante, int $idCurso, string $desd
     return $consulta->fetchAll();
 }
 
+function asistencias_estudiante(int $idEstudiante): array
+{
+    $consulta = bd()->prepare(
+        'SELECT a.attendance_date, a.status, c.title AS course_title, c.code AS course_code, c.id AS course_id
+         FROM attendances a
+         JOIN courses c ON c.id = a.course_id
+         JOIN enrollments e ON e.course_id = a.course_id AND e.student_id = a.student_id AND e.status = "active"
+         WHERE a.student_id = ?
+         ORDER BY a.attendance_date DESC, c.title'
+    );
+    $consulta->execute([$idEstudiante]);
+    return $consulta->fetchAll();
+}
+
+function resumen_asistencias(array $registros): array
+{
+    $resumen = [
+        'sesiones' => count($registros),
+        'presentes' => 0,
+        'ausentes' => 0,
+        'tardes' => 0,
+        'justificados' => 0,
+        'promedio' => 0,
+    ];
+    foreach ($registros as $fila) {
+        if ($fila['status'] === 'present') {
+            $resumen['presentes']++;
+        } elseif ($fila['status'] === 'absent') {
+            $resumen['ausentes']++;
+        } elseif ($fila['status'] === 'late') {
+            $resumen['tardes']++;
+        } else {
+            $resumen['justificados']++;
+        }
+    }
+    $resumen['promedio'] = porcentaje_asistencia(
+        $resumen['presentes'],
+        $resumen['tardes'],
+        $resumen['justificados'],
+        $resumen['sesiones']
+    );
+    return $resumen;
+}
+
 function porcentaje_asistencia(int $presentes, int $tardes, int $justificados, int $total): int
 {
     if ($total <= 0) {

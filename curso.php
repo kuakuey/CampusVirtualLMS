@@ -468,7 +468,7 @@ require_once __DIR__ . '/includes/encabezado.php';
     </li>
     <?php elseif ($matriculado): ?>
     <li class="nav-item">
-        <a class="nav-link" href="<?= URL_ASISTENCIA ?>?vista=reportes&curso=<?= $id ?>">
+        <a class="nav-link" href="<?= URL_ASISTENCIA ?>">
             <i class="bi bi-calendar-check me-1"></i>Asistencia
         </a>
     </li>

@@ -27,11 +27,8 @@ $cursos = cursos_para_asistencia($usuario);
 $idCurso = (int) ($_GET['curso'] ?? $_POST['curso'] ?? 0);
 $curso = $idCurso ? obtener_curso($idCurso) : null;
 
-if ($curso) {
-    $permitido = $esGestor
-        ? puede_gestionar_asistencia($curso)
-        : esta_matriculado((int) $curso['id'], (int) $usuario['id']);
-    if (!$permitido) {
+if ($curso && $esGestor) {
+    if (!puede_gestionar_asistencia($curso)) {
         mensaje_flash('danger', 'No tienes acceso a la asistencia de este curso.');
         redirigir('asistencia.php');
     }
@@ -90,45 +87,26 @@ $resumen = [
     'justificados' => 0,
     'promedio' => 0,
 ];
-if ($vista === 'reportes' && $curso) {
-    if ($esGestor) {
-        $reporteEstudiantes = reporte_asistencia_estudiantes($idCurso, $desde, $hasta);
-        $reporteFechas = reporte_asistencia_fechas($idCurso, $desde, $hasta);
-        $resumen['sesiones'] = count($reporteFechas);
-        foreach ($reporteFechas as $fila) {
-            $resumen['presentes'] += (int) $fila['presentes'];
-            $resumen['ausentes'] += (int) $fila['ausentes'];
-            $resumen['tardes'] += (int) $fila['tardes'];
-            $resumen['justificados'] += (int) $fila['justificados'];
-        }
-        $totalMarcas = $resumen['presentes'] + $resumen['ausentes'] + $resumen['tardes'] + $resumen['justificados'];
-        $resumen['promedio'] = porcentaje_asistencia(
-            $resumen['presentes'],
-            $resumen['tardes'],
-            $resumen['justificados'],
-            $totalMarcas
-        );
-    } else {
-        $detallePropio = reporte_asistencia_propia((int) $usuario['id'], $idCurso, $desde, $hasta);
-        $resumen['sesiones'] = count($detallePropio);
-        foreach ($detallePropio as $fila) {
-            if ($fila['status'] === 'present') {
-                $resumen['presentes']++;
-            } elseif ($fila['status'] === 'absent') {
-                $resumen['ausentes']++;
-            } elseif ($fila['status'] === 'late') {
-                $resumen['tardes']++;
-            } else {
-                $resumen['justificados']++;
-            }
-        }
-        $resumen['promedio'] = porcentaje_asistencia(
-            $resumen['presentes'],
-            $resumen['tardes'],
-            $resumen['justificados'],
-            $resumen['sesiones']
-        );
+if (!$esGestor) {
+    $detallePropio = asistencias_estudiante((int) $usuario['id']);
+    $resumen = resumen_asistencias($detallePropio);
+} elseif ($vista === 'reportes' && $curso) {
+    $reporteEstudiantes = reporte_asistencia_estudiantes($idCurso, $desde, $hasta);
+    $reporteFechas = reporte_asistencia_fechas($idCurso, $desde, $hasta);
+    $resumen['sesiones'] = count($reporteFechas);
+    foreach ($reporteFechas as $fila) {
+        $resumen['presentes'] += (int) $fila['presentes'];
+        $resumen['ausentes'] += (int) $fila['ausentes'];
+        $resumen['tardes'] += (int) $fila['tardes'];
+        $resumen['justificados'] += (int) $fila['justificados'];
     }
+    $totalMarcas = $resumen['presentes'] + $resumen['ausentes'] + $resumen['tardes'] + $resumen['justificados'];
+    $resumen['promedio'] = porcentaje_asistencia(
+        $resumen['presentes'],
+        $resumen['tardes'],
+        $resumen['justificados'],
+        $totalMarcas
+    );
 }
 
 $tituloPagina = 'Asistencia';
@@ -139,27 +117,107 @@ require_once __DIR__ . '/includes/encabezado.php';
     <div>
         <h1>Asistencia</h1>
         <p class="subtitle">
-            <?= $esGestor ? 'Toma lista por fecha y consulta los reportes del curso.' : 'Consulta tu historial de asistencias.' ?>
+            <?= $esGestor ? 'Toma lista por fecha y consulta los reportes del curso.' : 'Resumen y listado de todas tus asistencias.' ?>
         </p>
     </div>
 </div>
 
+<?php if ($esGestor): ?>
 <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
-    <?php if ($esGestor): ?>
     <li class="nav-item">
         <a class="nav-link <?= $vista === 'tomar' ? 'active' : '' ?>" href="<?= URL_ASISTENCIA ?>?vista=tomar<?= $idCurso ? '&curso=' . $idCurso : '' ?><?= $fecha ? '&fecha=' . urlencode($fecha) : '' ?>">
             <i class="bi bi-calendar-check me-1"></i> Tomar asistencia
         </a>
     </li>
-    <?php endif; ?>
     <li class="nav-item">
         <a class="nav-link <?= $vista === 'reportes' ? 'active' : '' ?>" href="<?= URL_ASISTENCIA ?>?vista=reportes<?= $idCurso ? '&curso=' . $idCurso : '' ?>">
             <i class="bi bi-bar-chart me-1"></i> Reportes
         </a>
     </li>
 </ul>
+<?php endif; ?>
 
-<?php if ($vista === 'tomar'): ?>
+<?php if (!$esGestor): ?>
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon icon-navy"><i class="bi bi-calendar3"></i></div>
+            <div class="stat-value"><?= (int) $resumen['sesiones'] ?></div>
+            <div class="stat-label">Sesiones</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon icon-teal"><i class="bi bi-percent"></i></div>
+            <div class="stat-value"><?= (int) $resumen['promedio'] ?>%</div>
+            <div class="stat-label">Porcentaje de asistencia</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon icon-teal"><i class="bi bi-person-check"></i></div>
+            <div class="stat-value"><?= (int) $resumen['presentes'] ?></div>
+            <div class="stat-label">Presentes</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon icon-rose"><i class="bi bi-person-x"></i></div>
+            <div class="stat-value"><?= (int) $resumen['ausentes'] ?></div>
+            <div class="stat-label">Ausentes</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon icon-amber"><i class="bi bi-clock-history"></i></div>
+            <div class="stat-value"><?= (int) $resumen['tardes'] ?></div>
+            <div class="stat-label">Tarde</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card">
+            <div class="stat-icon icon-navy"><i class="bi bi-info-circle"></i></div>
+            <div class="stat-value"><?= (int) $resumen['justificados'] ?></div>
+            <div class="stat-label">Justificados</div>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2>Todas tus asistencias</h2>
+    </div>
+    <div class="panel-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Curso</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!$detallePropio): ?>
+                        <tr><td colspan="3" class="text-center text-muted py-4">Aún no hay asistencias registradas.</td></tr>
+                    <?php endif; ?>
+                    <?php foreach ($detallePropio as $fila): ?>
+                        <tr>
+                            <td><?= formatear_fecha($fila['attendance_date']) ?></td>
+                            <td>
+                                <strong><?= escapar($fila['course_title']) ?></strong>
+                                <div class="small text-muted"><?= escapar($fila['course_code']) ?></div>
+                            </td>
+                            <td><?= insignia_asistencia($fila['status']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<?php elseif ($vista === 'tomar'): ?>
 <div class="panel mb-4">
     <div class="panel-header"><h2>Generar listado</h2></div>
     <div class="panel-body">
@@ -335,7 +393,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <div class="panel-body">
             <div class="empty-state">
                 <i class="bi bi-journal-x"></i>
-                <p class="mb-0"><?= $esGestor ? 'No hay cursos para consultar.' : 'No estás inscrito en ningún curso.' ?></p>
+                <p class="mb-0">No hay cursos para consultar.</p>
             </div>
         </div>
     </div>
@@ -371,8 +429,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         </div>
     </div>
 
-    <?php if ($esGestor): ?>
-        <div class="panel mb-4">
+    <div class="panel mb-4">
             <div class="panel-header">
                 <h2>Por estudiante · <?= escapar($curso['title']) ?></h2>
             </div>
@@ -463,36 +520,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                 </div>
             </div>
         </div>
-    <?php else: ?>
-        <div class="panel">
-            <div class="panel-header">
-                <h2>Tu historial · <?= escapar($curso['title']) ?></h2>
-            </div>
-            <div class="panel-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!$detallePropio): ?>
-                                <tr><td colspan="2" class="text-center text-muted py-4">No hay asistencias registradas en este período.</td></tr>
-                            <?php endif; ?>
-                            <?php foreach ($detallePropio as $fila): ?>
-                                <tr>
-                                    <td><?= formatear_fecha($fila['attendance_date']) ?></td>
-                                    <td><?= insignia_asistencia($fila['status']) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
 <?php endif; ?>
 <?php endif; ?>
 
