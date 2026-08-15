@@ -41,6 +41,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirigir(url_asistencia_curso($id, ['fecha' => $fechaGuardar]));
     }
 
+    if ($accion === 'eliminar_asistencia' && $esPropietario) {
+        $fechaBorrar = fecha_asistencia_valida($_POST['fecha'] ?? '');
+        if (!$fechaBorrar) {
+            mensaje_flash('danger', 'La fecha de asistencia no es válida.');
+            redirigir(url_asistencia_curso($id));
+        }
+        $borrados = eliminar_asistencias_fecha($id, $fechaBorrar);
+        if ($borrados > 0) {
+            mensaje_flash('success', 'Se eliminó el listado del ' . formatear_fecha($fechaBorrar) . ' (' . $borrados . ' registro(s)).');
+        } else {
+            mensaje_flash('warning', 'No había un listado guardado para esa fecha.');
+        }
+        $vistaDestino = ($_POST['volver_a'] ?? '') === 'reportes' ? 'reportes' : 'tomar';
+        $query = ['vista' => $vistaDestino];
+        if ($vistaDestino === 'tomar') {
+            $query['fecha'] = $fechaBorrar;
+        }
+        redirigir(url_asistencia_curso($id, $query));
+    }
+
     mensaje_flash('danger', 'No se pudo procesar la acción.');
     redirigir(url_asistencia_curso($id));
 }
@@ -153,12 +173,7 @@ require_once __DIR__ . '/encabezado.php';
         </div>
     </div>
 <?php else: ?>
-    <form method="post" id="form-asistencia" action="<?= escapar(url_asistencia_curso($id)) ?>">
-        <?= campo_csrf() ?>
-        <input type="hidden" name="accion" value="guardar_asistencia">
-        <input type="hidden" name="id" value="<?= (int) $id ?>/asistencia">
-        <input type="hidden" name="fecha" value="<?= escapar($fecha) ?>">
-        <div class="panel">
+    <div class="panel">
             <div class="panel-header">
                 <div>
                     <h2 class="mb-1">Lista del <?= formatear_fecha($fecha) ?></h2>
@@ -174,6 +189,11 @@ require_once __DIR__ . '/encabezado.php';
                     <button type="button" class="btn btn-sm btn-outline-danger" data-marcar="absent">Todos ausentes</button>
                 </div>
             </div>
+    <form method="post" id="form-asistencia" action="<?= escapar(url_asistencia_curso($id)) ?>">
+        <?= campo_csrf() ?>
+        <input type="hidden" name="accion" value="guardar_asistencia">
+        <input type="hidden" name="id" value="<?= (int) $id ?>/asistencia">
+        <input type="hidden" name="fecha" value="<?= escapar($fecha) ?>">
             <div class="panel-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 attendance-table">
@@ -220,13 +240,26 @@ require_once __DIR__ . '/encabezado.php';
                     </table>
                 </div>
             </div>
-            <div class="panel-body border-top d-flex justify-content-end">
-                <button class="btn btn-primary" type="submit">
+        </form>
+            <div class="panel-body border-top d-flex justify-content-between flex-wrap gap-2">
+                <?php if ($yaRegistrada): ?>
+                <form method="post" action="<?= escapar(url_asistencia_curso($id)) ?>" onsubmit="return confirm('¿Eliminar el listado del <?= escapar(formatear_fecha($fecha)) ?>? Esta acción no se puede deshacer.');">
+                    <?= campo_csrf() ?>
+                    <input type="hidden" name="accion" value="eliminar_asistencia">
+                    <input type="hidden" name="id" value="<?= (int) $id ?>/asistencia">
+                    <input type="hidden" name="fecha" value="<?= escapar($fecha) ?>">
+                    <button class="btn btn-outline-danger" type="submit">
+                        <i class="bi bi-trash me-1"></i> Borrar listado
+                    </button>
+                </form>
+                <?php else: ?>
+                <span></span>
+                <?php endif; ?>
+                <button class="btn btn-primary" type="submit" form="form-asistencia">
                     <i class="bi bi-save me-1"></i> Guardar asistencia
                 </button>
             </div>
         </div>
-    </form>
     <script>
     document.querySelectorAll('[data-marcar]').forEach(function (boton) {
         boton.addEventListener('click', function () {
@@ -372,9 +405,19 @@ require_once __DIR__ . '/encabezado.php';
                             <td class="text-center"><?= (int) $fila['tardes'] ?></td>
                             <td class="text-center"><?= (int) $fila['justificados'] ?></td>
                             <td class="text-end">
-                                <a class="btn btn-sm btn-outline-primary" href="<?= escapar(url_asistencia_curso($id, ['vista' => 'tomar', 'fecha' => $fila['attendance_date']])) ?>">
-                                    Ver lista
-                                </a>
+                                <div class="d-inline-flex gap-1 flex-wrap">
+                                    <a class="btn btn-sm btn-outline-primary" href="<?= escapar(url_asistencia_curso($id, ['vista' => 'tomar', 'fecha' => $fila['attendance_date']])) ?>">
+                                        Ver lista
+                                    </a>
+                                    <form method="post" action="<?= escapar(url_asistencia_curso($id, ['vista' => 'reportes'])) ?>" class="d-inline" onsubmit="return confirm('¿Eliminar el listado del <?= escapar(formatear_fecha($fila['attendance_date'])) ?>? Esta acción no se puede deshacer.');">
+                                        <?= campo_csrf() ?>
+                                        <input type="hidden" name="accion" value="eliminar_asistencia">
+                                        <input type="hidden" name="id" value="<?= (int) $id ?>/asistencia">
+                                        <input type="hidden" name="fecha" value="<?= escapar($fila['attendance_date']) ?>">
+                                        <input type="hidden" name="volver_a" value="reportes">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Borrar</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>

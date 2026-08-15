@@ -588,6 +588,13 @@ function guardar_asistencias(int $idCurso, string $fecha, array $estados, int $r
     return $guardados;
 }
 
+function eliminar_asistencias_fecha(int $idCurso, string $fecha): int
+{
+    $consulta = bd()->prepare('DELETE FROM attendances WHERE course_id = ? AND attendance_date = ?');
+    $consulta->execute([$idCurso, $fecha]);
+    return $consulta->rowCount();
+}
+
 function reporte_asistencia_estudiantes(int $idCurso, string $desde, string $hasta): array
 {
     $consulta = bd()->prepare(
