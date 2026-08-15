@@ -451,16 +451,14 @@ require_once __DIR__ . '/includes/encabezado.php';
 </div>
 <?php endif; ?>
 
-<?php if ($esPropietario || $matriculado): ?>
+<?php if ($esPropietario): ?>
 <div class="panel mb-4">
     <div class="panel-body d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
             <h2 class="h5 mb-1"><i class="bi bi-calendar-check me-1"></i> Asistencia</h2>
-            <p class="text-muted small mb-0"><?= $esPropietario ? 'Toma lista y consulta los reportes de este curso.' : 'Consulta tu asistencia en este curso.' ?></p>
+            <p class="text-muted small mb-0">Toma lista y consulta los reportes de este curso.</p>
         </div>
-        <a href="<?= escapar(url_asistencia_curso($id)) ?>" class="btn btn-primary">
-            <?= $esPropietario ? 'Tomar asistencia' : 'Ver asistencia' ?>
-        </a>
+        <a href="<?= escapar(url_asistencia_curso($id)) ?>" class="btn btn-primary">Tomar asistencia</a>
     </div>
 </div>
 <?php endif; ?>
@@ -483,6 +481,13 @@ require_once __DIR__ . '/includes/encabezado.php';
         </a>
     </li>
     <?php endforeach; ?>
+    <?php if ($matriculado && !$esPropietario): ?>
+    <li class="nav-item">
+        <a class="nav-link" href="<?= escapar(url_asistencia_curso($id)) ?>">
+            <i class="bi bi-clipboard-data me-1"></i>Reporte
+        </a>
+    </li>
+    <?php endif; ?>
 </ul>
 
 <?php if ($pestaña === 'lecciones'): ?>

@@ -92,6 +92,23 @@ require_once __DIR__ . '/encabezado.php';
     </a>
 </div>
 
+<?php if (!$esPropietario): ?>
+<ul class="nav nav-pills gap-2 mb-4 flex-wrap">
+    <li class="nav-item">
+        <a class="nav-link" href="<?= URL_CURSO ?>?id=<?= $id ?>&pestaña=lecciones"><i class="bi bi-book me-1"></i>Lecciones</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="<?= URL_CURSO ?>?id=<?= $id ?>&pestaña=tareas"><i class="bi bi-clipboard-check me-1"></i>Tareas</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="<?= URL_CURSO ?>?id=<?= $id ?>&pestaña=foro"><i class="bi bi-chat-dots me-1"></i>Foro</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="<?= escapar(url_asistencia_curso($id)) ?>"><i class="bi bi-clipboard-data me-1"></i>Reporte</a>
+    </li>
+</ul>
+<?php endif; ?>
+
 <?php if ($esPropietario): ?>
 <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
     <li class="nav-item">
