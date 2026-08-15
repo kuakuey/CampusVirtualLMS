@@ -15,14 +15,14 @@ if ($esGestor) {
     if ($idCurso) {
         $curso = obtener_curso($idCurso);
         if ($curso && puede_gestionar_asistencia($curso)) {
-            $qs = 'id=' . $idCurso;
+            $query = [];
             if (!empty($_GET['fecha'])) {
-                $qs .= '&fecha=' . urlencode((string) $_GET['fecha']);
+                $query['fecha'] = (string) $_GET['fecha'];
             }
             if (($_GET['vista'] ?? '') === 'reportes') {
-                $qs .= '&vista=reportes';
+                $query['vista'] = 'reportes';
             }
-            redirigir('curso-asistencia.php?' . $qs);
+            redirigir(url_asistencia_curso($idCurso, $query));
         }
     }
 
@@ -53,7 +53,7 @@ if ($esGestor) {
                         <div class="panel-body">
                             <span class="badge text-bg-light border mb-2"><?= escapar($c['code']) ?></span>
                             <h2 class="h5 mb-3"><?= escapar($c['title']) ?></h2>
-                            <a class="btn btn-primary w-100" href="<?= URL_CURSO_ASISTENCIA ?>?id=<?= (int) $c['id'] ?>">
+                            <a class="btn btn-primary w-100" href="<?= escapar(url_asistencia_curso((int) $c['id'])) ?>">
                                 <i class="bi bi-calendar-check me-1"></i> Abrir asistencia
                             </a>
                         </div>
@@ -147,7 +147,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <tr>
                             <td><?= formatear_fecha($fila['attendance_date']) ?></td>
                             <td>
-                                <a href="<?= URL_CURSO_ASISTENCIA ?>?id=<?= (int) $fila['course_id'] ?>" class="text-decoration-none">
+                                <a href="<?= escapar(url_asistencia_curso((int) $fila['course_id'])) ?>" class="text-decoration-none">
                                     <strong><?= escapar($fila['course_title']) ?></strong>
                                 </a>
                                 <div class="small text-muted"><?= escapar($fila['course_code']) ?></div>

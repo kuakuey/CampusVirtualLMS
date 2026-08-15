@@ -3,7 +3,7 @@ require_once __DIR__ . '/includes/funciones.php';
 requiere_sesion();
 
 $usuario = usuario_actual();
-$id = (int) ($_GET['id'] ?? 0);
+[$id, $seccionCurso] = parsear_seccion_curso();
 $curso = obtener_curso($id);
 
 if (!$curso) {
@@ -24,15 +24,21 @@ if (!$esPropietario && !$matriculado && $usuario['role'] !== 'admin') {
 }
 
 $pestaña = $_GET['pestaña'] ?? 'lecciones';
-if ($pestaña === 'asistencia') {
-    redirigir('curso-asistencia.php?id=' . $id);
-}
 $pestañasPermitidas = ['lecciones', 'tareas', 'foro', 'estudiantes'];
 if (!in_array($pestaña, $pestañasPermitidas, true)) {
     $pestaña = 'lecciones';
 }
 if ($pestaña === 'estudiantes' && !$esPropietario) {
     $pestaña = 'lecciones';
+}
+
+if ($seccionCurso === 'asistencia') {
+    if (!$esPropietario && !$matriculado) {
+        mensaje_flash('danger', 'No tienes acceso a la asistencia de este curso.');
+        redirigir('curso.php?id=' . $id);
+    }
+    require __DIR__ . '/includes/pagina-asistencia-curso.php';
+    exit;
 }
 
 // --- Acciones POST ---
@@ -364,9 +370,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <p class="text-muted mb-0">Docente: <?= escapar($curso['teacher_name']) ?></p>
             </div>
             <div class="d-flex gap-2 flex-wrap flex-shrink-0">
-                <?php if ($esPropietario || $matriculado): ?>
-                    <a href="<?= URL_CURSO_ASISTENCIA ?>?id=<?= $id ?>" class="btn btn-outline-primary"><i class="bi bi-calendar-check me-1"></i> Asistencia</a>
-                <?php endif; ?>
                 <?php if ($esPropietario): ?>
                     <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= $id ?>" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
                     <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este curso y todo su contenido?');">
@@ -444,6 +447,20 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php endif; ?>
             </p>
         <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($esPropietario || $matriculado): ?>
+<div class="panel mb-4">
+    <div class="panel-body d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2 class="h5 mb-1"><i class="bi bi-calendar-check me-1"></i> Asistencia</h2>
+            <p class="text-muted small mb-0"><?= $esPropietario ? 'Toma lista y consulta los reportes de este curso.' : 'Consulta tu asistencia en este curso.' ?></p>
+        </div>
+        <a href="<?= escapar(url_asistencia_curso($id)) ?>" class="btn btn-primary">
+            <?= $esPropietario ? 'Tomar asistencia' : 'Ver asistencia' ?>
+        </a>
     </div>
 </div>
 <?php endif; ?>
@@ -865,7 +882,7 @@ require_once __DIR__ . '/includes/encabezado.php';
 <div class="panel">
     <div class="panel-header">
         <h2>Estudiantes inscritos (<?= count($estudiantes) ?>)</h2>
-        <a href="<?= URL_CURSO_ASISTENCIA ?>?id=<?= $id ?>" class="btn btn-sm btn-primary">
+        <a href="<?= escapar(url_asistencia_curso($id)) ?>" class="btn btn-sm btn-primary">
             <i class="bi bi-calendar-check me-1"></i> Tomar asistencia
         </a>
     </div>

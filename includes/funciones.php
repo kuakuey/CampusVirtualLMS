@@ -392,6 +392,24 @@ function url_inscripcion_curso(array $curso): string
     return URL_INSCRIPCION_CURSO . '?token=' . urlencode($token);
 }
 
+function parsear_seccion_curso(): array
+{
+    $crudo = (string) ($_GET['id'] ?? $_POST['id'] ?? '');
+    if (preg_match('/^(\d+)\/asistencia\/?$/', $crudo, $coincidencias)) {
+        return [(int) $coincidencias[1], 'asistencia'];
+    }
+    return [(int) $crudo, 'curso'];
+}
+
+function url_asistencia_curso(int $idCurso, array $query = []): string
+{
+    $url = URL_APP . '/curso.php?id=' . $idCurso . '/asistencia';
+    if ($query) {
+        $url .= '&' . http_build_query($query);
+    }
+    return $url;
+}
+
 function inscribir_estudiante_en_curso(int $idCurso, int $idEstudiante): bool
 {
     $consulta = bd()->prepare(
