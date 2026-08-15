@@ -634,6 +634,24 @@ function reporte_asistencia_fechas(int $idCurso, string $desde, string $hasta): 
     return $consulta->fetchAll();
 }
 
+function reporte_asistencia_fechas_todas(int $idCurso): array
+{
+    $consulta = bd()->prepare(
+        'SELECT attendance_date,
+                COUNT(*) AS total,
+                SUM(status = "present") AS presentes,
+                SUM(status = "absent") AS ausentes,
+                SUM(status = "late") AS tardes,
+                SUM(status = "excused") AS justificados
+         FROM attendances
+         WHERE course_id = ?
+         GROUP BY attendance_date
+         ORDER BY attendance_date DESC'
+    );
+    $consulta->execute([$idCurso]);
+    return $consulta->fetchAll();
+}
+
 function reporte_asistencia_propia(int $idEstudiante, int $idCurso, string $desde, string $hasta): array
 {
     $consulta = bd()->prepare(

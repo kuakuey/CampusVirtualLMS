@@ -68,7 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $estudiantes = [];
 $asistenciasFecha = [];
 $yaRegistrada = false;
-$reporteEstudiantes = [];
 $reporteFechas = [];
 $detallePropio = [];
 $resumen = [
@@ -84,8 +83,7 @@ if ($esPropietario) {
     $estudiantes = estudiantes_activos_curso($id);
     $asistenciasFecha = asistencias_por_fecha($id, $fecha);
     $yaRegistrada = count($asistenciasFecha) > 0;
-    $reporteEstudiantes = reporte_asistencia_estudiantes($id, $desde, $hasta);
-    $reporteFechas = reporte_asistencia_fechas($id, $desde, $hasta);
+    $reporteFechas = reporte_asistencia_fechas_todas($id);
     $resumen = resumen_desde_fechas($reporteFechas);
 } else {
     $detallePropio = asistencias_estudiante_curso((int) $usuario['id'], $id);
@@ -273,29 +271,6 @@ require_once __DIR__ . '/encabezado.php';
 <?php endif; ?>
 
 <?php else: ?>
-<div class="panel mb-4">
-    <div class="panel-header"><h2>Filtros del reporte</h2></div>
-    <div class="panel-body">
-        <form class="row g-3 align-items-end" method="get" action="<?= URL_APP ?>/curso.php">
-            <input type="hidden" name="id" value="<?= (int) $id ?>/asistencia">
-            <input type="hidden" name="vista" value="reportes">
-            <div class="col-md-4">
-                <label class="form-label" for="desde-asistencia">Desde</label>
-                <input type="date" name="desde" id="desde-asistencia" class="form-control" value="<?= escapar($desde) ?>">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="hasta-asistencia">Hasta</label>
-                <input type="date" name="hasta" id="hasta-asistencia" class="form-control" value="<?= escapar($hasta) ?>">
-            </div>
-            <div class="col-md-4">
-                <button class="btn btn-primary w-100" type="submit">
-                    <i class="bi bi-search me-1"></i> Ver reporte
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <div class="row g-3 mb-4">
     <div class="col-md-3 col-6">
         <div class="stat-card">
@@ -327,59 +302,8 @@ require_once __DIR__ . '/encabezado.php';
     </div>
 </div>
 
-<div class="panel mb-4">
-    <div class="panel-header"><h2>Por estudiante</h2></div>
-    <div class="panel-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Estudiante</th>
-                        <th class="text-center">Presente</th>
-                        <th class="text-center">Ausente</th>
-                        <th class="text-center">Tarde</th>
-                        <th class="text-center">Justificado</th>
-                        <th class="text-center">%</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (!$reporteEstudiantes): ?>
-                        <tr><td colspan="6" class="text-center text-muted py-4">Sin estudiantes inscritos.</td></tr>
-                    <?php endif; ?>
-                    <?php foreach ($reporteEstudiantes as $st): ?>
-                        <?php
-                        $total = (int) $st['total'];
-                        $pct = porcentaje_asistencia((int) $st['presentes'], (int) $st['tardes'], (int) $st['justificados'], $total);
-                        ?>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center gap-2">
-                                    <?= renderizar_avatar_usuario($st, 32) ?>
-                                    <div>
-                                        <strong><?= escapar($st['name']) ?></strong>
-                                        <div class="small text-muted"><?= escapar($st['email']) ?></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="text-center"><?= (int) $st['presentes'] ?></td>
-                            <td class="text-center"><?= (int) $st['ausentes'] ?></td>
-                            <td class="text-center"><?= (int) $st['tardes'] ?></td>
-                            <td class="text-center"><?= (int) $st['justificados'] ?></td>
-                            <td class="text-center">
-                                <span class="badge <?= $pct >= 80 ? 'bg-success' : ($pct >= 60 ? 'bg-warning text-dark' : 'bg-danger') ?>">
-                                    <?= $pct ?>%
-                                </span>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
 <div class="panel">
-    <div class="panel-header"><h2>Por fecha</h2></div>
+    <div class="panel-header"><h2>Listados de asistencia</h2></div>
     <div class="panel-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -395,7 +319,7 @@ require_once __DIR__ . '/encabezado.php';
                 </thead>
                 <tbody>
                     <?php if (!$reporteFechas): ?>
-                        <tr><td colspan="6" class="text-center text-muted py-4">No hay asistencias registradas en este período.</td></tr>
+                        <tr><td colspan="6" class="text-center text-muted py-4">No hay listados de asistencia registrados.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($reporteFechas as $fila): ?>
                         <tr>
