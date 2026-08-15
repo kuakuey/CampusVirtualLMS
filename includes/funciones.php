@@ -635,6 +635,56 @@ function asistencias_estudiante(int $idEstudiante): array
     return $consulta->fetchAll();
 }
 
+function asistencias_estudiante_curso(int $idEstudiante, int $idCurso): array
+{
+    $consulta = bd()->prepare(
+        'SELECT attendance_date, status
+         FROM attendances
+         WHERE student_id = ? AND course_id = ?
+         ORDER BY attendance_date DESC'
+    );
+    $consulta->execute([$idEstudiante, $idCurso]);
+    return $consulta->fetchAll();
+}
+
+function asegurar_tabla_asistencias(): bool
+{
+    try {
+        bd()->query('SELECT 1 FROM attendances LIMIT 1');
+        return true;
+    } catch (PDOException $e) {
+        require_once __DIR__ . '/gestor_bd.php';
+        $migracion = GestorBd::ejecutarMigracion('009_asistencias.sql');
+        return !empty($migracion['exito']);
+    }
+}
+
+function resumen_desde_fechas(array $reporteFechas): array
+{
+    $resumen = [
+        'sesiones' => count($reporteFechas),
+        'presentes' => 0,
+        'ausentes' => 0,
+        'tardes' => 0,
+        'justificados' => 0,
+        'promedio' => 0,
+    ];
+    foreach ($reporteFechas as $fila) {
+        $resumen['presentes'] += (int) $fila['presentes'];
+        $resumen['ausentes'] += (int) $fila['ausentes'];
+        $resumen['tardes'] += (int) $fila['tardes'];
+        $resumen['justificados'] += (int) $fila['justificados'];
+    }
+    $total = $resumen['presentes'] + $resumen['ausentes'] + $resumen['tardes'] + $resumen['justificados'];
+    $resumen['promedio'] = porcentaje_asistencia(
+        $resumen['presentes'],
+        $resumen['tardes'],
+        $resumen['justificados'],
+        $total
+    );
+    return $resumen;
+}
+
 function resumen_asistencias(array $registros): array
 {
     $resumen = [
