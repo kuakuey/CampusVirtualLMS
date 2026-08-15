@@ -39,11 +39,6 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?= $paginaActual === 'asistencia.php' ? 'active' : '' ?>" href="<?= URL_ASISTENCIA ?>">
-                        <i class="bi bi-calendar-check me-1"></i> Asistencia
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link <?= $paginaActual === 'perfil.php' ? 'active' : '' ?>" href="<?= URL_PERFIL ?>">
                         <i class="bi bi-person me-1"></i> Perfil
                     </a>
