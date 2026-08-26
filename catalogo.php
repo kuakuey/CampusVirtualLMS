@@ -108,11 +108,11 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php if ($curso['enrolled']): ?>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-success w-100"><i class="bi bi-check2 me-1"></i> Ya inscrito · Abrir</a>
                 <?php elseif (!inscripcion_abierta($curso)): ?>
-                    <p class="small text-muted mb-2">El plazo de inscripción finalizó. Puedes ver la información del curso.</p>
-                    <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-primary w-100">Ver curso</a>
+                    <p class="small text-muted mb-2">El plazo de inscripción finalizó.</p>
+                    <button type="button" class="btn btn-primary w-100" disabled><i class="bi bi-plus-lg me-1"></i> Inscribirse</button>
                 <?php elseif ($tipoInscripcion === 'url'): ?>
-                    <p class="small text-muted mb-2">Para inscribirte necesitas el enlace de inscripción.</p>
-                    <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-primary w-100">Ver curso</a>
+                    <p class="small text-muted mb-2">Solo puedes inscribirte con el enlace.</p>
+                    <button type="button" class="btn btn-primary w-100" disabled><i class="bi bi-plus-lg me-1"></i> Inscribirse</button>
                 <?php elseif ($tipoInscripcion === 'password'): ?>
                     <form method="post">
                         <?= campo_csrf() ?>
@@ -120,13 +120,13 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <div class="mb-2">
                             <input type="password" name="clave_inscripcion" class="form-control form-control-sm" placeholder="Contraseña del curso" required>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-key me-1"></i> Inscribirme</button>
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-key me-1"></i> Inscribirse</button>
                     </form>
                 <?php else: ?>
                     <form method="post">
                         <?= campo_csrf() ?>
                         <input type="hidden" name="id_curso_inscripcion" value="<?= (int) $curso['id'] ?>">
-                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i> Inscribirme</button>
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i> Inscribirse</button>
                     </form>
                 <?php endif; ?>
             </div>
