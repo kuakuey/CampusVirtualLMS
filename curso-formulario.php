@@ -147,99 +147,111 @@ require_once __DIR__ . '/includes/encabezado.php';
     <a href="<?= URL_APP ?>/<?= $esNuevo ? 'cursos.php' : 'curso.php?id=' . $id ?>" class="btn btn-outline-secondary">Volver</a>
 </div>
 
-<div class="panel" style="max-width: 760px;">
-    <div class="panel-body">
-        <?php if ($errors): ?>
-            <div class="alert alert-danger"><ul class="mb-0 ps-3"><?php foreach ($errors as $err): ?><li><?= escapar($err) ?></li><?php endforeach; ?></ul></div>
-        <?php endif; ?>
-        <form method="post">
-            <?= campo_csrf() ?>
-            <input type="hidden" name="accion" value="guardar">
-            <div class="row g-3">
-                <div class="col-md-8">
-                    <label class="form-label">Título</label>
-                    <input type="text" name="title" class="form-control" value="<?= escapar($_POST['title'] ?? '') ?>" required autofocus>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Código</label>
-                    <input type="text" name="code" class="form-control bg-light" value="<?= escapar($_POST['code'] ?? $codigoGenerado) ?>" readonly required>
-                    <small class="text-muted">Generado automáticamente</small>
-                </div>
-                <div class="col-12">
-                    <label class="form-label">Descripción breve</label>
-                    <textarea name="short_description" class="form-control" rows="2" maxlength="255" placeholder="Se muestra en el listado y el catálogo de cursos"><?= escapar($_POST['short_description'] ?? '') ?></textarea>
-                    <small class="text-muted">Hasta 255 caracteres. Aparece en las tarjetas de cursos.</small>
-                </div>
-                <div class="col-12">
-                    <label class="form-label">Descripción larga</label>
-                    <textarea name="description" class="form-control" rows="6" placeholder="Se muestra al abrir el curso"><?= escapar($_POST['description'] ?? '') ?></textarea>
-                    <small class="text-muted">Puedes usar HTML para formato, listas, enlaces e imágenes. Se ve al entrar al curso.</small>
-                </div>
+<?php if ($errors): ?>
+    <div class="alert alert-danger"><ul class="mb-0 ps-3"><?php foreach ($errors as $err): ?><li><?= escapar($err) ?></li><?php endforeach; ?></ul></div>
+<?php endif; ?>
 
-                <div class="col-12">
-                    <label class="form-label">Método de inscripción</label>
-                    <select name="enrollment_type" class="form-select" id="enrollment_type">
-                        <option value="public" <?= ($_POST['enrollment_type'] ?? 'public') === 'public' ? 'selected' : '' ?>>Público — visible y cualquiera puede inscribirse</option>
-                        <option value="password" <?= ($_POST['enrollment_type'] ?? '') === 'password' ? 'selected' : '' ?>>Con contraseña — visible; se inscribe con clave</option>
-                        <option value="url" <?= ($_POST['enrollment_type'] ?? '') === 'url' ? 'selected' : '' ?>>Por URL (privado) — visible sin acceso; inscripción solo con el enlace</option>
-                    </select>
-                    <small class="text-muted">Todos los cursos publicados se ven en el catálogo. URL y contraseña no dan acceso al contenido hasta inscribirse.</small>
+<form method="post">
+    <?= campo_csrf() ?>
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-7">
+            <div class="panel h-100">
+                <div class="panel-header">
+                    <h2><i class="bi bi-journal-text me-2"></i>Información del curso</h2>
                 </div>
-
-                <div class="col-12" id="campo-clave-inscripcion" style="display:none;">
-                    <label class="form-label">Contraseña de inscripción</label>
-                    <input type="text" name="enrollment_password" class="form-control" placeholder="<?= !$esNuevo && !empty($curso['enrollment_password']) ? 'Dejar vacío para mantener la actual' : 'Contraseña requerida' ?>">
-                </div>
-
-                <div class="col-md-6" id="campo-fecha-limite-inscripcion">
-                    <label class="form-label">Fecha límite de inscripción</label>
-                    <input type="date" name="enrollment_deadline" class="form-control" value="<?= escapar(fecha_para_input($_POST['enrollment_deadline'] ?? null)) ?>">
-                    <small class="text-muted">Opcional. Después de esta fecha no habrá nuevas inscripciones.</small>
-                </div>
-
-                <?php if (!$esNuevo): ?>
-                <div class="col-12" id="campo-url-inscripcion" style="display:none;">
-                    <label class="form-label">Enlace de inscripción automática</label>
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="url-inscripcion" value="<?= escapar($urlInscripcion) ?>" readonly>
-                        <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('url-inscripcion').value)"><i class="bi bi-clipboard"></i></button>
+                <div class="panel-body">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Título</label>
+                            <input type="text" name="title" class="form-control" value="<?= escapar($_POST['title'] ?? '') ?>" required autofocus>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Código</label>
+                            <input type="text" name="code" class="form-control bg-light" value="<?= escapar($_POST['code'] ?? $codigoGenerado) ?>" readonly required>
+                            <small class="text-muted">Generado automáticamente</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción breve</label>
+                            <textarea name="short_description" class="form-control" rows="3" maxlength="255" placeholder="Se muestra en el listado y el catálogo de cursos"><?= escapar($_POST['short_description'] ?? '') ?></textarea>
+                            <small class="text-muted">Hasta 255 caracteres. Aparece en las tarjetas de cursos.</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción larga</label>
+                            <textarea name="description" class="form-control" rows="10" placeholder="Se muestra al abrir el curso"><?= escapar($_POST['description'] ?? '') ?></textarea>
+                            <small class="text-muted">Puedes usar HTML para formato, listas, enlaces e imágenes. Se ve al entrar al curso.</small>
+                        </div>
                     </div>
-                    <small class="text-muted">Comparte este enlace. Al abrirlo, el estudiante se inscribe automáticamente. El curso se ve en el catálogo, pero sin acceso al contenido.</small>
-                </div>
-                <?php endif; ?>
-
-                <div class="col-md-6">
-                    <label class="form-label">Categoría</label>
-                    <select name="category_id" class="form-select">
-                        <option value="">Sin categoría</option>
-                        <?php foreach ($categories as $cat): ?>
-                            <option value="<?= (int) $cat['id'] ?>" <?= (int) ($_POST['category_id'] ?? 0) === (int) $cat['id'] ? 'selected' : '' ?>><?= escapar($cat['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Estado</label>
-                    <select name="estado" class="form-select">
-                        <?php foreach (['draft' => 'Borrador', 'published' => 'Publicado', 'archived' => 'Archivado'] as $k => $v): ?>
-                            <option value="<?= $k ?>" <?= ($_POST['status'] ?? $_POST['estado'] ?? 'draft') === $k ? 'selected' : '' ?>><?= $v ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-12 d-flex gap-2 flex-wrap">
-                    <button type="submit" class="btn btn-primary"><?= $esNuevo ? 'Crear curso' : 'Guardar' ?></button>
-                    <a href="<?= URL_APP ?>/<?= $esNuevo ? 'cursos.php' : 'curso.php?id=' . $id ?>" class="btn btn-outline-secondary">Cancelar</a>
                 </div>
             </div>
-        </form>
-        <?php if (!$esNuevo && ($curso['enrollment_type'] ?? '') === 'url'): ?>
-        <form method="post" class="mt-3" onsubmit="return confirm('¿Generar un nuevo enlace? El anterior dejará de funcionar.');">
-            <?= campo_csrf() ?>
-            <input type="hidden" name="accion" value="regenerar_enlace">
-            <button type="submit" class="btn btn-sm btn-outline-warning"><i class="bi bi-arrow-repeat me-1"></i> Regenerar enlace de inscripción</button>
-        </form>
-        <?php endif; ?>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="panel h-100">
+                <div class="panel-header">
+                    <h2><i class="bi bi-person-check me-2"></i>Inscripción y publicación</h2>
+                </div>
+                <div class="panel-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Método de inscripción</label>
+                            <select name="enrollment_type" class="form-select" id="enrollment_type">
+                                <option value="public" <?= ($_POST['enrollment_type'] ?? 'public') === 'public' ? 'selected' : '' ?>>Público — visible y cualquiera puede inscribirse</option>
+                                <option value="password" <?= ($_POST['enrollment_type'] ?? '') === 'password' ? 'selected' : '' ?>>Con contraseña — visible; se inscribe con clave</option>
+                                <option value="url" <?= ($_POST['enrollment_type'] ?? '') === 'url' ? 'selected' : '' ?>>Por URL (privado) — visible sin acceso; inscripción solo con el enlace</option>
+                            </select>
+                            <small class="text-muted">Todos los cursos publicados se ven en el catálogo. URL y contraseña no dan acceso al contenido hasta inscribirse.</small>
+                        </div>
+                        <div class="col-12" id="campo-clave-inscripcion" style="display:none;">
+                            <label class="form-label">Contraseña de inscripción</label>
+                            <input type="text" name="enrollment_password" class="form-control" placeholder="<?= !$esNuevo && !empty($curso['enrollment_password']) ? 'Dejar vacío para mantener la actual' : 'Contraseña requerida' ?>">
+                        </div>
+                        <?php if (!$esNuevo): ?>
+                        <div class="col-12" id="campo-url-inscripcion" style="display:none;">
+                            <label class="form-label">Enlace de inscripción automática</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="url-inscripcion" value="<?= escapar($urlInscripcion) ?>" readonly>
+                                <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('url-inscripcion').value)"><i class="bi bi-clipboard"></i></button>
+                            </div>
+                            <small class="text-muted">Comparte este enlace. Al abrirlo, el estudiante se inscribe automáticamente.</small>
+                            <?php if (($curso['enrollment_type'] ?? '') === 'url'): ?>
+                                <button type="submit" name="accion" value="regenerar_enlace" class="btn btn-sm btn-outline-warning mt-2" data-confirm="¿Generar un nuevo enlace? El anterior dejará de funcionar.">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Regenerar enlace
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                        <div class="col-12" id="campo-fecha-limite-inscripcion">
+                            <label class="form-label">Fecha límite de inscripción</label>
+                            <input type="date" name="enrollment_deadline" class="form-control" value="<?= escapar(fecha_para_input($_POST['enrollment_deadline'] ?? null)) ?>">
+                            <small class="text-muted">Opcional. Después de esta fecha no habrá nuevas inscripciones.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Categoría</label>
+                            <select name="category_id" class="form-select">
+                                <option value="">Sin categoría</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?= (int) $cat['id'] ?>" <?= (int) ($_POST['category_id'] ?? 0) === (int) $cat['id'] ? 'selected' : '' ?>><?= escapar($cat['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estado</label>
+                            <select name="estado" class="form-select">
+                                <?php foreach (['draft' => 'Borrador', 'published' => 'Publicado', 'archived' => 'Archivado'] as $k => $v): ?>
+                                    <option value="<?= $k ?>" <?= ($_POST['status'] ?? $_POST['estado'] ?? 'draft') === $k ? 'selected' : '' ?>><?= $v ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-12 d-flex gap-2 flex-wrap pt-2">
+                            <button type="submit" name="accion" value="guardar" class="btn btn-primary"><?= $esNuevo ? 'Crear curso' : 'Guardar' ?></button>
+                            <a href="<?= URL_APP ?>/<?= $esNuevo ? 'cursos.php' : 'curso.php?id=' . $id ?>" class="btn btn-outline-secondary">Cancelar</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
+</form>
 
 <script>
 (function () {
