@@ -16,7 +16,7 @@ Sistema de gestión de aprendizaje (tipo Moodle) desarrollado en **PHP + MySQL +
 3. Importa la base de datos. Opciones:
 
    **Opción A — Página de instalación (recomendado en producción):**
-   1. Configura `config/config.php` con tus credenciales MySQL.
+   1. Copia `config/config.example.php` a `config/config.php` y completa tus credenciales MySQL.
    2. Abre `http://tudominio.com/instalacion.php` (no requiere login).
    3. Verifica el estado de conexión y usa **Instalación rápida** o **Actualizar tablas**.
 
@@ -25,7 +25,7 @@ Sistema de gestión de aprendizaje (tipo Moodle) desarrollado en **PHP + MySQL +
    mysql -u root < sql/schema.sql
    ```
 
-4. Si tu MySQL tiene contraseña, edita `config/config.php`:
+4. Si tu MySQL tiene contraseña, edita `config/config.php` (no se sube al repositorio):
    ```php
    define('BD_CLAVE', 'tu_password');
    ```
@@ -80,7 +80,9 @@ AulaVirtual/
 │   └── categorias.php
 ├── assets/
 ├── config/
-│   ├── config.php
+│   ├── config.example.php
+│   ├── config.php          (credenciales, no versionado)
+│   ├── app.php
 │   └── base_datos.php
 ├── includes/
 │   ├── funciones.php

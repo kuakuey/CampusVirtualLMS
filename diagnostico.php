@@ -17,7 +17,7 @@ $configOk = file_exists(__DIR__ . '/config/config.php');
 $pruebas[] = ['Config', $configOk ? 'config.php encontrado' : 'No existe config.php', $configOk];
 
 if ($configOk) {
-    require_once __DIR__ . '/config/config.php';
+    require_once __DIR__ . '/config/app.php';
 
     $pruebas[] = ['URL_APP', defined('URL_APP') ? URL_APP : 'No definida', defined('URL_APP')];
     $pruebas[] = ['Carpeta subidas', is_dir(RUTA_SUBIDAS) ? 'OK' : 'No existe (se creará sola)', true];
