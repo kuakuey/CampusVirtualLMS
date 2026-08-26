@@ -491,6 +491,129 @@ function resumen_seguimiento_lecciones_curso(int $idCurso): array
     }
 }
 
+function url_asistencia_sesion_curso(int $idCurso, array $query = []): string
+{
+    $parametros = array_merge(['id' => $idCurso, 'pestaña' => 'asistencia-sesion'], $query);
+    return URL_APP . '/curso.php?' . http_build_query($parametros);
+}
+
+function reporte_asistencia_sesiones_curso(int $idCurso, ?int $idModulo = null): array
+{
+    $consulta = bd()->prepare(
+        'SELECT u.id, u.name, u.email
+         FROM enrollments e
+         JOIN users u ON u.id = e.student_id
+         WHERE e.course_id = ? AND e.status = "active"
+         ORDER BY u.name'
+    );
+    $consulta->execute([$idCurso]);
+    $estudiantes = $consulta->fetchAll();
+
+    $lecciones = obtener_lecciones_curso($idCurso);
+    if ($idModulo !== null && $idModulo > 0) {
+        $lecciones = array_values(array_filter(
+            $lecciones,
+            static function (array $leccion) use ($idModulo): bool {
+                return (int) ($leccion['subcourse_id'] ?? 0) === $idModulo;
+            }
+        ));
+    }
+
+    $idsLecciones = array_map(static function (array $leccion): int {
+        return (int) $leccion['id'];
+    }, $lecciones);
+
+    $watch = [];
+    $completadas = [];
+    if ($idsLecciones) {
+        $marcadores = implode(',', array_fill(0, count($idsLecciones), '?'));
+        try {
+            $consulta = bd()->prepare(
+                "SELECT lesson_id, student_id, seconds_watched, reached_required_at
+                 FROM lesson_watch_progress
+                 WHERE lesson_id IN ($marcadores)"
+            );
+            $consulta->execute($idsLecciones);
+            foreach ($consulta->fetchAll() as $fila) {
+                $watch[(int) $fila['student_id']][(int) $fila['lesson_id']] = $fila;
+            }
+            $consulta = bd()->prepare(
+                "SELECT lesson_id, student_id, completed_at
+                 FROM lesson_completions
+                 WHERE lesson_id IN ($marcadores)"
+            );
+            $consulta->execute($idsLecciones);
+            foreach ($consulta->fetchAll() as $fila) {
+                $completadas[(int) $fila['student_id']][(int) $fila['lesson_id']] = $fila;
+            }
+        } catch (PDOException $e) {
+            error_log('No se pudo leer asistencia por sesión del curso ' . $idCurso . ': ' . $e->getMessage());
+        }
+    }
+
+    $porSesion = [];
+    foreach ($lecciones as $leccion) {
+        $porSesion[(int) $leccion['id']] = [
+            'asistieron' => 0,
+            'completaron' => 0,
+            'diez_min' => 0,
+        ];
+    }
+
+    $celdas = [];
+    $totalAsistencias = 0;
+    $estudiantesSalida = [];
+    foreach ($estudiantes as $estudiante) {
+        $idEstudiante = (int) $estudiante['id'];
+        $asistidas = 0;
+        foreach ($lecciones as $leccion) {
+            $idLeccion = (int) $leccion['id'];
+            $progreso = $watch[$idEstudiante][$idLeccion] ?? [];
+            $cierre = $completadas[$idEstudiante][$idLeccion] ?? [];
+            $completada = !empty($cierre['completed_at']);
+            $diezMin = !empty($progreso['reached_required_at']) || $completada;
+            $asistio = $diezMin;
+            if ($asistio) {
+                $asistidas++;
+                $totalAsistencias++;
+                $porSesion[$idLeccion]['asistieron']++;
+            }
+            if ($diezMin) {
+                $porSesion[$idLeccion]['diez_min']++;
+            }
+            if ($completada) {
+                $porSesion[$idLeccion]['completaron']++;
+            }
+            $celdas[$idEstudiante][$idLeccion] = [
+                'seconds_watched' => (int) ($progreso['seconds_watched'] ?? 0),
+                'reached_required_at' => $progreso['reached_required_at'] ?? null,
+                'completed_at' => $cierre['completed_at'] ?? null,
+                'asistio' => $asistio,
+                'completada' => $completada,
+                'diez_min' => $diezMin,
+            ];
+        }
+        $estudiante['sesiones_asistidas'] = $asistidas;
+        $estudiantesSalida[] = $estudiante;
+    }
+
+    $totalEstudiantes = count($estudiantesSalida);
+    $totalSesiones = count($lecciones);
+    $totalCeldas = $totalEstudiantes * $totalSesiones;
+
+    return [
+        'estudiantes' => $estudiantesSalida,
+        'lecciones' => $lecciones,
+        'celdas' => $celdas,
+        'por_sesion' => $porSesion,
+        'total_estudiantes' => $totalEstudiantes,
+        'total_sesiones' => $totalSesiones,
+        'asistencias' => $totalAsistencias,
+        'porcentaje' => $totalCeldas > 0 ? (int) round(($totalAsistencias / $totalCeldas) * 100) : 0,
+        'requerido' => segundos_requeridos_video_leccion(),
+    ];
+}
+
 function generar_token_inscripcion(): string
 {
     return bin2hex(random_bytes(16));

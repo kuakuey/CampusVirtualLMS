@@ -22,7 +22,7 @@ if (!$esDocenteAsignado && !$matriculado && !$vistaPrevia) {
 }
 
 $pestaña = $_GET['pestaña'] ?? 'lecciones';
-$pestañasPermitidas = ['lecciones', 'tareas', 'foro', 'estudiantes', 'asistencia'];
+$pestañasPermitidas = ['lecciones', 'tareas', 'foro', 'estudiantes', 'asistencia', 'asistencia-sesion'];
 if (!in_array($pestaña, $pestañasPermitidas, true)) {
     $pestaña = 'lecciones';
 }
@@ -30,6 +30,9 @@ if ($pestaña === 'estudiantes' && !$esPropietario) {
     $pestaña = 'lecciones';
 }
 if ($pestaña === 'asistencia' && !$esPropietario) {
+    $pestaña = 'lecciones';
+}
+if ($pestaña === 'asistencia-sesion' && !$esDocenteAsignado) {
     $pestaña = 'lecciones';
 }
 
@@ -527,6 +530,9 @@ require_once __DIR__ . '/includes/encabezado.php';
         $pestañas['estudiantes'] = ['Estudiantes', 'bi-people'];
         $pestañas['asistencia'] = ['Asistencia', 'bi-calendar-check'];
     }
+    if ($esDocenteAsignado) {
+        $pestañas['asistencia-sesion'] = ['Asistencia por sesión', 'bi-camera-video'];
+    }
     foreach ($pestañas as $key => [$label, $icon]):
     ?>
     <li class="nav-item">
@@ -1012,6 +1018,9 @@ require_once __DIR__ . '/includes/encabezado.php';
 
 <?php elseif ($pestaña === 'asistencia' && $esPropietario): ?>
 <?php require __DIR__ . '/includes/pagina-asistencia-curso.php'; ?>
+
+<?php elseif ($pestaña === 'asistencia-sesion' && $esDocenteAsignado): ?>
+<?php require __DIR__ . '/includes/pagina-asistencia-sesion.php'; ?>
 
 <?php elseif ($pestaña === 'estudiantes' && $esPropietario): ?>
 <div class="panel">

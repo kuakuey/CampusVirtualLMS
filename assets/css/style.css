@@ -677,3 +677,25 @@ body.lesson-sidebar-open .lesson-sidebar-fab {
         width: 100%;
     }
 }
+
+.session-matrix th.session-col {
+    min-width: 2.75rem;
+    max-width: 3.5rem;
+    text-align: center;
+    font-size: 0.8rem;
+    vertical-align: middle;
+}
+
+.session-matrix th.sticky-col,
+.session-matrix td.sticky-col {
+    position: sticky;
+    left: 0;
+    background: #fff;
+    z-index: 1;
+    min-width: 12rem;
+}
+
+.session-matrix thead th.sticky-col {
+    z-index: 2;
+    background: #f8fafb;
+}
