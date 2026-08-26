@@ -12,10 +12,11 @@ if (!$curso) {
 }
 
 $esPropietario = $usuario['role'] === 'admin' || ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']);
+$esDocenteAsignado = $esPropietario || ($usuario['role'] === 'teacher' && es_docente_modulo_curso($id, (int) $usuario['id']));
 $matriculado = esta_matriculado($id);
-$vistaPrevia = !$esPropietario && !$matriculado && $usuario['role'] === 'student' && $curso['status'] === 'published';
+$vistaPrevia = !$esDocenteAsignado && !$matriculado && $usuario['role'] === 'student' && $curso['status'] === 'published';
 
-if (!$esPropietario && !$matriculado && !$vistaPrevia) {
+if (!$esDocenteAsignado && !$matriculado && !$vistaPrevia) {
     mensaje_flash('danger', 'No tienes acceso a este curso.');
     redirigir($usuario['role'] === 'student' ? 'catalogo.php' : 'cursos.php');
 }
@@ -362,7 +363,9 @@ if ($idTema) {
 }
 
 $estudiantes = [];
-if ($esPropietario) {
+$resumenSeguimientoLecciones = [];
+$totalAlumnosActivos = 0;
+if ($esDocenteAsignado) {
     $stmt = bd()->prepare(
         'SELECT e.*, u.name, u.email FROM enrollments e
          JOIN users u ON u.id = e.student_id
@@ -370,6 +373,12 @@ if ($esPropietario) {
     );
     $stmt->execute([$id]);
     $estudiantes = $stmt->fetchAll();
+    foreach ($estudiantes as $st) {
+        if (($st['status'] ?? '') === 'active') {
+            $totalAlumnosActivos++;
+        }
+    }
+    $resumenSeguimientoLecciones = resumen_seguimiento_lecciones_curso($id);
 }
 
 $tituloPagina = $curso['title'];
@@ -607,6 +616,15 @@ require_once __DIR__ . '/includes/encabezado.php';
                                         <?php if ($mostrarProgresoEstudiante): ?>
                                             <span class="badge <?= $leccionCompletada ? 'bg-success' : 'bg-secondary' ?> ms-1 flex-shrink-0">
                                                 <?= $leccionCompletada ? '100%' : '0%' ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if ($esDocenteAsignado): ?>
+                                            <?php
+                                            $resSeg = $resumenSeguimientoLecciones[(int) $lesson['id']] ?? ['completadas' => 0, 'diez_minutos' => 0];
+                                            ?>
+                                            <span class="small text-muted ms-1 flex-shrink-0">
+                                                <?= (int) $resSeg['diez_minutos'] ?>/<?= $totalAlumnosActivos ?> con 10 min
+                                                · <?= (int) $resSeg['completadas'] ?> completaron
                                             </span>
                                         <?php endif; ?>
                                         <?php if (!empty($lesson['attachment'])): ?>

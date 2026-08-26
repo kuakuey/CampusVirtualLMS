@@ -19,14 +19,18 @@ if (!$curso || !puede_acceder_curso($curso)) {
 
 $esPropietario = es_propietario_curso($curso, $usuario);
 $idCurso = (int) $lesson['course_id'];
+$puedeVerSeguimiento = $esPropietario
+    || ($usuario['role'] === 'teacher' && es_docente_modulo_curso($idCurso, (int) $usuario['id']));
 $mostrarProgreso = $usuario['role'] === 'student' && esta_matriculado($idCurso);
 $leccionCompletada = $mostrarProgreso && leccion_esta_completada($id, (int) $usuario['id']);
 $progresoCurso = $mostrarProgreso ? porcentaje_progreso_curso($idCurso, (int) $usuario['id']) : 0;
 $idsCompletadas = $mostrarProgreso ? obtener_ids_lecciones_completadas($idCurso, (int) $usuario['id']) : [];
 $tipoVideo = tipo_video_leccion($lesson['video_url'] ?? null);
 $youtubeId = id_video_youtube($lesson['video_url'] ?? null);
-$tiempoRequerido = 600;
+$tiempoRequerido = segundos_requeridos_video_leccion();
 $videoConSeguimiento = $mostrarProgreso && !$leccionCompletada && in_array($tipoVideo, ['youtube', 'html5'], true);
+$seguimientoLeccion = $puedeVerSeguimiento ? obtener_seguimiento_leccion($id, $idCurso) : [];
+$requeridoSeguimiento = $tiempoRequerido;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['ajax'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -293,6 +297,90 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php endif; ?>
             </div>
         </div>
+        <?php if ($puedeVerSeguimiento): ?>
+        <?php
+        $totalSeguimiento = count($seguimientoLeccion);
+        $conDiezMin = 0;
+        $completadasSeguimiento = 0;
+        foreach ($seguimientoLeccion as $filaSeg) {
+            if (!empty($filaSeg['completed_at'])) {
+                $completadasSeguimiento++;
+            }
+            if (!empty($filaSeg['reached_required_at']) || !empty($filaSeg['completed_at'])) {
+                $conDiezMin++;
+            }
+        }
+        ?>
+        <div class="panel mt-4">
+            <div class="panel-header">
+                <div>
+                    <h2 class="mb-1">Seguimiento de estudiantes</h2>
+                    <p class="small text-muted mb-0">Quién llegó a 10 minutos de video y quién marcó la lección como completada.</p>
+                </div>
+                <?php if ($totalSeguimiento > 0): ?>
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="badge bg-info text-dark"><?= $conDiezMin ?> / <?= $totalSeguimiento ?> con 10 min</span>
+                    <span class="badge bg-success"><?= $completadasSeguimiento ?> / <?= $totalSeguimiento ?> completaron</span>
+                </div>
+                <?php endif; ?>
+            </div>
+            <div class="panel-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Estudiante</th>
+                                <th>10 minutos</th>
+                                <th>Completada</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!$seguimientoLeccion): ?>
+                                <tr><td colspan="3" class="text-center text-muted py-4">No hay estudiantes inscritos en este curso.</td></tr>
+                            <?php endif; ?>
+                            <?php foreach ($seguimientoLeccion as $filaSeg): ?>
+                                <?php
+                                $segundosVistos = (int) ($filaSeg['seconds_watched'] ?? 0);
+                                $llegoDiez = !empty($filaSeg['reached_required_at']) || !empty($filaSeg['completed_at']);
+                                $completadaFila = !empty($filaSeg['completed_at']);
+                                ?>
+                            <tr>
+                                <td>
+                                    <strong><?= escapar($filaSeg['name']) ?></strong>
+                                    <div class="small text-muted"><?= escapar($filaSeg['email']) ?></div>
+                                </td>
+                                <td>
+                                    <?php if ($llegoDiez): ?>
+                                        <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Sí</span>
+                                        <div class="small text-muted mt-1">
+                                            <?= formatear_fecha($filaSeg['reached_required_at'] ?? $filaSeg['completed_at'], true) ?>
+                                            <?php if ($segundosVistos > 0): ?>
+                                                · <?= formatear_duracion_segundos($segundosVistos) ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php elseif ($segundosVistos > 0): ?>
+                                        <span class="badge bg-secondary">No</span>
+                                        <div class="small text-muted mt-1"><?= formatear_duracion_segundos($segundosVistos) ?> / <?= formatear_duracion_segundos($requeridoSeguimiento) ?></div>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($completadaFila): ?>
+                                        <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Sí</span>
+                                        <div class="small text-muted mt-1"><?= formatear_fecha($filaSeg['completed_at'], true) ?></div>
+                                    <?php else: ?>
+                                        <span class="text-muted">No</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         <div class="d-flex justify-content-between mt-3">
             <?php if ($prev): ?>
                 <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $prev['id'] ?>" class="btn btn-outline-primary"><i class="bi bi-chevron-left"></i> <?= escapar($prev['title']) ?></a>

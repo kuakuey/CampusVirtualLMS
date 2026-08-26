@@ -142,6 +142,9 @@ function puede_acceder_curso(array $curso): bool
     if ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']) {
         return true;
     }
+    if ($usuario['role'] === 'teacher' && es_docente_modulo_curso((int) $curso['id'], (int) $usuario['id'])) {
+        return true;
+    }
     return esta_matriculado((int) $curso['id'], (int) $usuario['id']);
 }
 
@@ -293,6 +296,17 @@ function es_propietario_curso(array $curso, ?array $usuario = null): bool
         || ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']);
 }
 
+function es_docente_modulo_curso(int $idCurso, ?int $idUsuario = null): bool
+{
+    $idUsuario = $idUsuario ?? (int) (usuario_actual()['id'] ?? 0);
+    if ($idCurso < 1 || $idUsuario < 1) {
+        return false;
+    }
+    $consulta = bd()->prepare('SELECT id FROM subcourses WHERE course_id = ? AND teacher_id = ? LIMIT 1');
+    $consulta->execute([$idCurso, $idUsuario]);
+    return (bool) $consulta->fetch();
+}
+
 function id_video_youtube(?string $url): ?string
 {
     if (!$url || !preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/', $url, $coincidencias)) {
@@ -360,7 +374,121 @@ function marcar_leccion_completada(int $idLeccion, int $idEstudiante): bool
         'INSERT INTO lesson_completions (lesson_id, student_id) VALUES (?, ?)
          ON DUPLICATE KEY UPDATE completed_at = CURRENT_TIMESTAMP'
     );
-    return $consulta->execute([$idLeccion, $idEstudiante]);
+    $ok = $consulta->execute([$idLeccion, $idEstudiante]);
+    if ($ok) {
+        persistir_tiempo_video_leccion($idLeccion, $idEstudiante, segundos_requeridos_video_leccion(), true);
+    }
+    return $ok;
+}
+
+function segundos_requeridos_video_leccion(): int
+{
+    return 600;
+}
+
+function formatear_duracion_segundos(int $segundos): string
+{
+    $segundos = max(0, $segundos);
+    $mins = intdiv($segundos, 60);
+    $secs = $segundos % 60;
+    return $mins . ':' . str_pad((string) $secs, 2, '0', STR_PAD_LEFT);
+}
+
+function persistir_tiempo_video_leccion(int $idLeccion, int $idEstudiante, int $segundos, bool $marcarRequisito = false): void
+{
+    $requerido = segundos_requeridos_video_leccion();
+    $segundos = max(0, $segundos);
+    if ($segundos < 1 && !$marcarRequisito) {
+        return;
+    }
+    try {
+        if ($marcarRequisito) {
+            $consulta = bd()->prepare(
+                'INSERT INTO lesson_watch_progress (lesson_id, student_id, seconds_watched, reached_required_at)
+                 VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                 ON DUPLICATE KEY UPDATE
+                    seconds_watched = GREATEST(seconds_watched, VALUES(seconds_watched)),
+                    reached_required_at = COALESCE(reached_required_at, CURRENT_TIMESTAMP)'
+            );
+            $consulta->execute([$idLeccion, $idEstudiante, $requerido]);
+            return;
+        }
+        $consulta = bd()->prepare(
+            'INSERT INTO lesson_watch_progress (lesson_id, student_id, seconds_watched, reached_required_at)
+             VALUES (?, ?, ?, IF(? >= ?, CURRENT_TIMESTAMP, NULL))
+             ON DUPLICATE KEY UPDATE
+                seconds_watched = LEAST(seconds_watched + VALUES(seconds_watched), 86400),
+                reached_required_at = IF(
+                    reached_required_at IS NOT NULL,
+                    reached_required_at,
+                    IF(seconds_watched >= ?, CURRENT_TIMESTAMP, NULL)
+                )'
+        );
+        $consulta->execute([
+            $idLeccion,
+            $idEstudiante,
+            $segundos,
+            $segundos,
+            $requerido,
+            $requerido,
+        ]);
+    } catch (PDOException $e) {
+        error_log('No se pudo guardar el tiempo de video de la lección ' . $idLeccion . ': ' . $e->getMessage());
+    }
+}
+
+function obtener_seguimiento_leccion(int $idLeccion, int $idCurso): array
+{
+    try {
+        $consulta = bd()->prepare(
+            'SELECT u.id, u.name, u.email,
+                    lc.completed_at,
+                    wp.seconds_watched,
+                    wp.reached_required_at
+             FROM enrollments e
+             JOIN users u ON u.id = e.student_id
+             LEFT JOIN lesson_completions lc ON lc.lesson_id = ? AND lc.student_id = u.id
+             LEFT JOIN lesson_watch_progress wp ON wp.lesson_id = ? AND wp.student_id = u.id
+             WHERE e.course_id = ? AND e.status = "active"
+             ORDER BY u.name'
+        );
+        $consulta->execute([$idLeccion, $idLeccion, $idCurso]);
+        return $consulta->fetchAll();
+    } catch (PDOException $e) {
+        error_log('No se pudo leer el seguimiento de la lección ' . $idLeccion . ': ' . $e->getMessage());
+        return [];
+    }
+}
+
+function resumen_seguimiento_lecciones_curso(int $idCurso): array
+{
+    try {
+        $consulta = bd()->prepare(
+            'SELECT l.id,
+                    COUNT(DISTINCT lc.student_id) AS completadas,
+                    COUNT(DISTINCT CASE
+                        WHEN wp.reached_required_at IS NOT NULL OR lc.id IS NOT NULL
+                        THEN e.student_id
+                    END) AS diez_minutos
+             FROM lessons l
+             LEFT JOIN enrollments e ON e.course_id = l.course_id AND e.status = "active"
+             LEFT JOIN lesson_completions lc ON lc.lesson_id = l.id AND lc.student_id = e.student_id
+             LEFT JOIN lesson_watch_progress wp ON wp.lesson_id = l.id AND wp.student_id = e.student_id
+             WHERE l.course_id = ?
+             GROUP BY l.id'
+        );
+        $consulta->execute([$idCurso]);
+        $filas = [];
+        foreach ($consulta->fetchAll() as $fila) {
+            $filas[(int) $fila['id']] = [
+                'completadas' => (int) $fila['completadas'],
+                'diez_minutos' => (int) $fila['diez_minutos'],
+            ];
+        }
+        return $filas;
+    } catch (PDOException $e) {
+        return [];
+    }
 }
 
 function generar_token_inscripcion(): string
@@ -544,6 +672,10 @@ function registrar_tiempo_video_leccion(int $idLeccion, int $segundos): int
         86400,
         obtener_tiempo_video_leccion($idLeccion) + $segundos
     );
+    $usuario = usuario_actual();
+    if ($usuario && ($usuario['role'] ?? '') === 'student') {
+        persistir_tiempo_video_leccion($idLeccion, (int) $usuario['id'], $segundos);
+    }
     return $_SESSION['tiempo_video_leccion'][$idLeccion];
 }
 

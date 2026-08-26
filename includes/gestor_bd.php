@@ -8,7 +8,7 @@ class GestorBd
     private const TABLAS_APP = [
         'users', 'categories', 'course_groups', 'courses', 'subcourses', 'enrollments', 'lessons',
         'assignments', 'submissions', 'grades',
-        'forum_topics', 'forum_replies', 'lesson_completions', 'attendances',
+        'forum_topics', 'forum_replies', 'lesson_completions', 'lesson_watch_progress', 'attendances',
     ];
 
     public static function obtenerConexionServidor(): PDO
