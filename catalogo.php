@@ -11,7 +11,6 @@ $idCategoria = (int) ($_GET['categoria'] ?? 0);
 $categories = bd()->query('SELECT * FROM categories ORDER BY name')->fetchAll();
 
 $sql = 'SELECT c.*, cat.name AS category_name,
-               (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students,
                EXISTS(SELECT 1 FROM enrollments e WHERE e.course_id = c.id AND e.student_id = ? AND e.status = "active") AS enrolled
         FROM courses c
         LEFT JOIN categories cat ON cat.id = c.category_id
@@ -92,10 +91,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <p><?= escapar($textoBreve) ?></p>
                 <?php endif; ?>
                 <div class="small text-muted mb-3">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <?= insignia_metodo_inscripcion($curso['enrollment_type'] ?? 'public') ?>
-                        <span><?= escapar($curso['category_name'] ?? 'General') ?> · <?= (int) $curso['students'] ?> alumnos</span>
-                    </div>
+                    <div><?= escapar($curso['category_name'] ?? 'General') ?></div>
                     <?php if (!empty($curso['enrollment_deadline'])): ?>
                         <div class="mt-1"><i class="bi bi-calendar-event me-1"></i>Inscripción hasta <?= formatear_fecha($curso['enrollment_deadline']) ?></div>
                     <?php endif; ?>
@@ -106,7 +102,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <p class="small text-muted mb-2">El plazo de inscripción finalizó. Puedes ver la información del curso.</p>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-primary w-100">Ver curso</a>
                 <?php elseif (($curso['enrollment_type'] ?? 'public') === 'url'): ?>
-                    <p class="small text-muted mb-2">Curso privado. Puedes verlo, pero la inscripción es solo con el enlace.</p>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-primary w-100">Ver curso</a>
                 <?php elseif (($curso['enrollment_type'] ?? 'public') === 'password'): ?>
                     <form method="post">
