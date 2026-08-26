@@ -90,12 +90,11 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php if ($textoBreve !== ''): ?>
                     <p><?= escapar($textoBreve) ?></p>
                 <?php endif; ?>
+                <?php if (!empty($curso['enrollment_deadline'])): ?>
                 <div class="small text-muted mb-3">
-                    <div><?= escapar($curso['category_name'] ?? 'General') ?></div>
-                    <?php if (!empty($curso['enrollment_deadline'])): ?>
-                        <div class="mt-1"><i class="bi bi-calendar-event me-1"></i>Inscripción hasta <?= formatear_fecha($curso['enrollment_deadline']) ?></div>
-                    <?php endif; ?>
+                    <i class="bi bi-calendar-event me-1"></i>Inscripción hasta <?= formatear_fecha($curso['enrollment_deadline']) ?>
                 </div>
+                <?php endif; ?>
                 <?php if ($curso['enrolled']): ?>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-success w-100"><i class="bi bi-check2 me-1"></i> Ya inscrito · Abrir</a>
                 <?php elseif (!inscripcion_abierta($curso)): ?>
