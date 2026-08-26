@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             input.type = visible ? 'password' : 'text';
             btn.setAttribute('aria-pressed', visible ? 'false' : 'true');
             btn.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+            btn.setAttribute('title', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
             const icono = btn.querySelector('i');
             if (icono) {
                 icono.classList.toggle('bi-eye', visible);
