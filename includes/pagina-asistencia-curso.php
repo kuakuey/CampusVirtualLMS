@@ -1,132 +1,3 @@
-<?php
-if (!asegurar_tabla_asistencias()) {
-    mensaje_flash('danger', 'No se pudo preparar la tabla de asistencias. Actualiza las tablas en instalación.');
-    redirigir('curso.php?id=' . $id);
-}
-
-$vista = $_GET['vista'] ?? ($esPropietario ? 'tomar' : 'resumen');
-if ($esPropietario && !in_array($vista, ['tomar', 'reportes'], true)) {
-    $vista = 'tomar';
-}
-if (!$esPropietario) {
-    $vista = 'resumen';
-}
-
-$fecha = fecha_asistencia_valida($_GET['fecha'] ?? $_POST['fecha'] ?? '') ?: date('Y-m-d');
-$desde = fecha_asistencia_valida($_GET['desde'] ?? '') ?: date('Y-m-01');
-$hasta = fecha_asistencia_valida($_GET['hasta'] ?? '') ?: date('Y-m-d');
-if ($desde > $hasta) {
-    $tmp = $desde;
-    $desde = $hasta;
-    $hasta = $tmp;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verificar_csrf();
-    $accion = $_POST['accion'] ?? '';
-
-    if ($accion === 'guardar_asistencia' && $esPropietario) {
-        $fechaGuardar = fecha_asistencia_valida($_POST['fecha'] ?? '');
-        $estados = $_POST['estado'] ?? [];
-        if (!$fechaGuardar) {
-            mensaje_flash('danger', 'La fecha de asistencia no es válida.');
-            redirigir(url_asistencia_curso($id));
-        }
-        if (!is_array($estados) || !$estados) {
-            mensaje_flash('warning', 'No se recibió el listado de estudiantes.');
-            redirigir(url_asistencia_curso($id, ['fecha' => $fechaGuardar]));
-        }
-        $guardados = guardar_asistencias($id, $fechaGuardar, $estados, (int) $usuario['id']);
-        mensaje_flash('success', 'Asistencia del ' . formatear_fecha($fechaGuardar) . ' guardada (' . $guardados . ' estudiante(s)).');
-        redirigir(url_asistencia_curso($id, ['fecha' => $fechaGuardar]));
-    }
-
-    if ($accion === 'eliminar_asistencia' && $esPropietario) {
-        $fechaBorrar = fecha_asistencia_valida($_POST['fecha'] ?? '');
-        if (!$fechaBorrar) {
-            mensaje_flash('danger', 'La fecha de asistencia no es válida.');
-            redirigir(url_asistencia_curso($id));
-        }
-        $borrados = eliminar_asistencias_fecha($id, $fechaBorrar);
-        if ($borrados > 0) {
-            mensaje_flash('success', 'Se eliminó el listado del ' . formatear_fecha($fechaBorrar) . ' (' . $borrados . ' registro(s)).');
-        } else {
-            mensaje_flash('warning', 'No había un listado guardado para esa fecha.');
-        }
-        $vistaDestino = ($_POST['volver_a'] ?? '') === 'reportes' ? 'reportes' : 'tomar';
-        $query = ['vista' => $vistaDestino];
-        if ($vistaDestino === 'tomar') {
-            $query['fecha'] = $fechaBorrar;
-        }
-        redirigir(url_asistencia_curso($id, $query));
-    }
-
-    mensaje_flash('danger', 'No se pudo procesar la acción.');
-    redirigir(url_asistencia_curso($id));
-}
-
-$estudiantes = [];
-$asistenciasFecha = [];
-$yaRegistrada = false;
-$reporteFechas = [];
-$detallePropio = [];
-$resumen = [
-    'sesiones' => 0,
-    'presentes' => 0,
-    'ausentes' => 0,
-    'tardes' => 0,
-    'justificados' => 0,
-    'promedio' => 0,
-];
-
-if ($esPropietario) {
-    $estudiantes = estudiantes_activos_curso($id);
-    $asistenciasFecha = asistencias_por_fecha($id, $fecha);
-    $yaRegistrada = count($asistenciasFecha) > 0;
-    $reporteFechas = reporte_asistencia_fechas_todas($id);
-    $resumen = resumen_desde_fechas($reporteFechas);
-} else {
-    $detallePropio = asistencias_estudiante_curso((int) $usuario['id'], $id);
-    $resumen = resumen_asistencias($detallePropio);
-}
-
-$tituloPagina = 'Asistencia · ' . $curso['title'];
-require_once __DIR__ . '/encabezado.php';
-?>
-
-<div class="page-header">
-    <div>
-        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
-            <span class="badge text-bg-light border"><?= escapar($curso['code']) ?></span>
-            <?php if (!empty($curso['category_name'])): ?>
-                <span class="badge bg-secondary"><?= escapar($curso['category_name']) ?></span>
-            <?php endif; ?>
-        </div>
-        <h1>Asistencia</h1>
-        <p class="subtitle mb-0"><?= escapar($curso['title']) ?></p>
-    </div>
-    <a href="<?= URL_CURSO ?>?id=<?= $id ?>" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i> Volver al curso
-    </a>
-</div>
-
-<?php if (!$esPropietario): ?>
-<ul class="nav nav-pills gap-2 mb-4 flex-wrap">
-    <li class="nav-item">
-        <a class="nav-link" href="<?= URL_CURSO ?>?id=<?= $id ?>&pestaña=lecciones"><i class="bi bi-book me-1"></i>Lecciones</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="<?= URL_CURSO ?>?id=<?= $id ?>&pestaña=tareas"><i class="bi bi-clipboard-check me-1"></i>Tareas</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="<?= URL_CURSO ?>?id=<?= $id ?>&pestaña=foro"><i class="bi bi-chat-dots me-1"></i>Foro</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link active" href="<?= escapar(url_asistencia_curso($id)) ?>"><i class="bi bi-clipboard-data me-1"></i>Reporte</a>
-    </li>
-</ul>
-<?php endif; ?>
-
 <?php if ($esPropietario): ?>
 <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
     <li class="nav-item">
@@ -146,7 +17,8 @@ require_once __DIR__ . '/encabezado.php';
     <div class="panel-header"><h2>Generar listado</h2></div>
     <div class="panel-body">
         <form class="row g-3 align-items-end" method="get" action="<?= URL_APP ?>/curso.php">
-            <input type="hidden" name="id" value="<?= (int) $id ?>/asistencia">
+            <input type="hidden" name="id" value="<?= (int) $id ?>">
+            <input type="hidden" name="pestaña" value="asistencia">
             <input type="hidden" name="vista" value="tomar">
             <div class="col-md-6">
                 <label class="form-label" for="fecha-asistencia">Fecha</label>
@@ -161,7 +33,7 @@ require_once __DIR__ . '/encabezado.php';
     </div>
 </div>
 
-<?php if (!$estudiantes): ?>
+<?php if (!$estudiantesAsistencia): ?>
     <div class="panel">
         <div class="panel-body">
             <div class="empty-state">
@@ -176,7 +48,7 @@ require_once __DIR__ . '/encabezado.php';
                 <div>
                     <h2 class="mb-1">Lista del <?= formatear_fecha($fecha) ?></h2>
                     <p class="small text-muted mb-0">
-                        <?= count($estudiantes) ?> estudiante(s)
+                        <?= count($estudiantesAsistencia) ?> estudiante(s)
                         <?php if ($yaRegistrada): ?>
                             · <span class="text-success">Ya hay un registro; puedes actualizarlo.</span>
                         <?php endif; ?>
@@ -190,7 +62,6 @@ require_once __DIR__ . '/encabezado.php';
     <form method="post" id="form-asistencia" action="<?= escapar(url_asistencia_curso($id)) ?>">
         <?= campo_csrf() ?>
         <input type="hidden" name="accion" value="guardar_asistencia">
-        <input type="hidden" name="id" value="<?= (int) $id ?>/asistencia">
         <input type="hidden" name="fecha" value="<?= escapar($fecha) ?>">
             <div class="panel-body p-0">
                 <div class="table-responsive">
@@ -202,7 +73,7 @@ require_once __DIR__ . '/encabezado.php';
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($estudiantes as $st): ?>
+                            <?php foreach ($estudiantesAsistencia as $st): ?>
                                 <?php
                                 $sid = (int) $st['id'];
                                 $estadoActual = $asistenciasFecha[$sid] ?? 'present';
@@ -244,7 +115,6 @@ require_once __DIR__ . '/encabezado.php';
                 <form method="post" action="<?= escapar(url_asistencia_curso($id)) ?>" onsubmit="return confirm('¿Eliminar el listado del <?= escapar(formatear_fecha($fecha)) ?>? Esta acción no se puede deshacer.');">
                     <?= campo_csrf() ?>
                     <input type="hidden" name="accion" value="eliminar_asistencia">
-                    <input type="hidden" name="id" value="<?= (int) $id ?>/asistencia">
                     <input type="hidden" name="fecha" value="<?= escapar($fecha) ?>">
                     <button class="btn btn-outline-danger" type="submit">
                         <i class="bi bi-trash me-1"></i> Borrar listado
@@ -336,7 +206,6 @@ require_once __DIR__ . '/encabezado.php';
                                     <form method="post" action="<?= escapar(url_asistencia_curso($id, ['vista' => 'reportes'])) ?>" class="d-inline" onsubmit="return confirm('¿Eliminar el listado del <?= escapar(formatear_fecha($fila['attendance_date'])) ?>? Esta acción no se puede deshacer.');">
                                         <?= campo_csrf() ?>
                                         <input type="hidden" name="accion" value="eliminar_asistencia">
-                                        <input type="hidden" name="id" value="<?= (int) $id ?>/asistencia">
                                         <input type="hidden" name="fecha" value="<?= escapar($fila['attendance_date']) ?>">
                                         <input type="hidden" name="volver_a" value="reportes">
                                         <button class="btn btn-sm btn-outline-danger" type="submit">Borrar</button>
@@ -425,5 +294,3 @@ require_once __DIR__ . '/encabezado.php';
     </div>
 </div>
 <?php endif; ?>
-
-<?php require_once __DIR__ . '/pie.php'; ?>

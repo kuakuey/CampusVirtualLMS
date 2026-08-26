@@ -430,11 +430,8 @@ function parsear_seccion_curso(): array
 
 function url_asistencia_curso(int $idCurso, array $query = []): string
 {
-    $url = URL_APP . '/curso.php?id=' . $idCurso . '/asistencia';
-    if ($query) {
-        $url .= '&' . http_build_query($query);
-    }
-    return $url;
+    $parametros = array_merge(['id' => $idCurso, 'pestaña' => 'asistencia'], $query);
+    return URL_APP . '/curso.php?' . http_build_query($parametros);
 }
 
 function inscribir_estudiante_en_curso(int $idCurso, int $idEstudiante): bool

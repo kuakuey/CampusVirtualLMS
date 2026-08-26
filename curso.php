@@ -21,11 +21,14 @@ if (!$esPropietario && !$matriculado && !$vistaPrevia) {
 }
 
 $pestaña = $_GET['pestaña'] ?? 'lecciones';
-$pestañasPermitidas = ['lecciones', 'tareas', 'foro', 'estudiantes'];
+$pestañasPermitidas = ['lecciones', 'tareas', 'foro', 'estudiantes', 'asistencia'];
 if (!in_array($pestaña, $pestañasPermitidas, true)) {
     $pestaña = 'lecciones';
 }
 if ($pestaña === 'estudiantes' && !$esPropietario) {
+    $pestaña = 'lecciones';
+}
+if ($pestaña === 'asistencia' && !$esPropietario && !$matriculado) {
     $pestaña = 'lecciones';
 }
 
@@ -34,8 +37,9 @@ if ($seccionCurso === 'asistencia') {
         mensaje_flash('danger', 'No tienes acceso a la asistencia de este curso.');
         redirigir('curso.php?id=' . $id);
     }
-    require __DIR__ . '/includes/pagina-asistencia-curso.php';
-    exit;
+    $extra = $_GET;
+    unset($extra['id']);
+    redirigir(url_asistencia_curso($id, $extra));
 }
 
 // --- Acciones POST ---
@@ -257,6 +261,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         mensaje_flash('success', 'Curso eliminado.');
         redirigir('cursos.php');
     }
+}
+
+if ($pestaña === 'asistencia') {
+    require __DIR__ . '/includes/asistencia-curso-controlador.php';
 }
 
 // --- Datos por pestaña ---
@@ -499,18 +507,6 @@ require_once __DIR__ . '/includes/encabezado.php';
 </div>
 <?php endif; ?>
 
-<?php if ($esPropietario): ?>
-<div class="panel mb-4">
-    <div class="panel-body d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div>
-            <h2 class="h5 mb-1"><i class="bi bi-calendar-check me-1"></i> Asistencia</h2>
-            <p class="text-muted small mb-0">Toma lista y consulta los reportes de este curso.</p>
-        </div>
-        <a href="<?= escapar(url_asistencia_curso($id)) ?>" class="btn btn-primary">Tomar asistencia</a>
-    </div>
-</div>
-<?php endif; ?>
-
 <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
     <?php
     $pestañas = [
@@ -521,6 +517,9 @@ require_once __DIR__ . '/includes/encabezado.php';
     if ($esPropietario) {
         $pestañas['estudiantes'] = ['Estudiantes', 'bi-people'];
     }
+    if ($esPropietario || $matriculado) {
+        $pestañas['asistencia'] = ['Asistencia', 'bi-calendar-check'];
+    }
     foreach ($pestañas as $key => [$label, $icon]):
     ?>
     <li class="nav-item">
@@ -529,13 +528,6 @@ require_once __DIR__ . '/includes/encabezado.php';
         </a>
     </li>
     <?php endforeach; ?>
-    <?php if ($matriculado && !$esPropietario): ?>
-    <li class="nav-item">
-        <a class="nav-link" href="<?= escapar(url_asistencia_curso($id)) ?>">
-            <i class="bi bi-clipboard-data me-1"></i>Reporte
-        </a>
-    </li>
-    <?php endif; ?>
 </ul>
 
 <?php if ($pestaña === 'lecciones'): ?>
@@ -1002,13 +994,13 @@ require_once __DIR__ . '/includes/encabezado.php';
     </div>
 </div>
 
+<?php elseif ($pestaña === 'asistencia' && ($esPropietario || $matriculado)): ?>
+<?php require __DIR__ . '/includes/pagina-asistencia-curso.php'; ?>
+
 <?php elseif ($pestaña === 'estudiantes' && $esPropietario): ?>
 <div class="panel">
     <div class="panel-header">
         <h2>Estudiantes inscritos (<?= count($estudiantes) ?>)</h2>
-        <a href="<?= escapar(url_asistencia_curso($id)) ?>" class="btn btn-sm btn-primary">
-            <i class="bi bi-calendar-check me-1"></i> Tomar asistencia
-        </a>
     </div>
     <div class="panel-body p-0">
         <div class="table-responsive">
