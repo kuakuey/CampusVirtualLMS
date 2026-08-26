@@ -28,12 +28,12 @@ if (!in_array($pestaña, $pestañasPermitidas, true)) {
 if ($pestaña === 'estudiantes' && !$esPropietario) {
     $pestaña = 'lecciones';
 }
-if ($pestaña === 'asistencia' && !$esPropietario && !$matriculado) {
+if ($pestaña === 'asistencia' && !$esPropietario) {
     $pestaña = 'lecciones';
 }
 
 if ($seccionCurso === 'asistencia') {
-    if (!$esPropietario && !$matriculado) {
+    if (!$esPropietario) {
         mensaje_flash('danger', 'No tienes acceso a la asistencia de este curso.');
         redirigir('curso.php?id=' . $id);
     }
@@ -516,8 +516,6 @@ require_once __DIR__ . '/includes/encabezado.php';
     ];
     if ($esPropietario) {
         $pestañas['estudiantes'] = ['Estudiantes', 'bi-people'];
-    }
-    if ($esPropietario || $matriculado) {
         $pestañas['asistencia'] = ['Asistencia', 'bi-calendar-check'];
     }
     foreach ($pestañas as $key => [$label, $icon]):
@@ -994,7 +992,7 @@ require_once __DIR__ . '/includes/encabezado.php';
     </div>
 </div>
 
-<?php elseif ($pestaña === 'asistencia' && ($esPropietario || $matriculado)): ?>
+<?php elseif ($pestaña === 'asistencia' && $esPropietario): ?>
 <?php require __DIR__ . '/includes/pagina-asistencia-curso.php'; ?>
 
 <?php elseif ($pestaña === 'estudiantes' && $esPropietario): ?>
