@@ -58,7 +58,12 @@ require_once __DIR__ . '/includes/encabezado.php';
             </div>
             <div class="mb-3">
                 <label class="form-label" for="password">Contraseña</label>
-                <input type="password" class="form-control" id="password" name="password" required>
+                <div class="password-field">
+                    <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
+                    <button type="button" class="password-toggle" data-toggle-password="password" aria-label="Mostrar contraseña" aria-pressed="false">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary w-100 mb-3">Entrar</button>
         </form>

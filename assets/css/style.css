@@ -296,6 +296,41 @@ body {
 
 .auth-card .auth-body-inner { padding: 1.5rem; }
 
+.password-field {
+    position: relative;
+}
+
+.password-field .form-control {
+    padding-right: 2.85rem;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.3rem;
+    transform: translateY(-50%);
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--av-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+    background: var(--av-teal-light);
+    color: var(--av-navy);
+}
+
+.password-match-msg {
+    min-height: 1.25rem;
+    margin-top: 0.35rem;
+}
+
 .demo-accounts {
     background: #f4f8fa;
     border-radius: 10px;

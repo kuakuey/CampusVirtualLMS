@@ -13,13 +13,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $password2 = $_POST['password2'] ?? '';
-    $role = $_POST['role'] ?? 'student';
+    $role = 'student';
 
     if ($name === '') $errors[] = 'El nombre es obligatorio.';
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Correo inválido.';
     if (strlen($password) < 6) $errors[] = 'La contraseña debe tener al menos 6 caracteres.';
     if ($password !== $password2) $errors[] = 'Las contraseñas no coinciden.';
-    if (!in_array($role, ['student', 'teacher'], true)) $role = 'student';
 
     if (!$errors) {
         $check = bd()->prepare('SELECT id FROM users WHERE email = ?');
@@ -53,7 +52,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                 </ul>
             </div>
         <?php endif; ?>
-        <form method="post">
+        <form method="post" data-password-match>
             <?= campo_csrf() ?>
             <div class="mb-3">
                 <label class="form-label" for="name">Nombre completo</label>
@@ -64,19 +63,13 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <input type="email" class="form-control" id="email" name="email" value="<?= escapar($_POST['email'] ?? '') ?>" required>
             </div>
             <div class="mb-3">
-                <label class="form-label" for="role">Tipo de cuenta</label>
-                <select class="form-select" id="role" name="role">
-                    <option value="student" <?= ($_POST['role'] ?? '') === 'student' ? 'selected' : '' ?>>Estudiante</option>
-                    <option value="teacher" <?= ($_POST['role'] ?? '') === 'teacher' ? 'selected' : '' ?>>Docente</option>
-                </select>
-            </div>
-            <div class="mb-3">
                 <label class="form-label" for="password">Contraseña</label>
-                <input type="password" class="form-control" id="password" name="password" required>
+                <input type="password" class="form-control" id="password" name="password" required minlength="6" autocomplete="new-password">
             </div>
             <div class="mb-3">
                 <label class="form-label" for="password2">Confirmar contraseña</label>
-                <input type="password" class="form-control" id="password2" name="password2" required>
+                <input type="password" class="form-control" id="password2" name="password2" required minlength="6" autocomplete="new-password" aria-describedby="password-match-msg">
+                <div class="form-text password-match-msg" id="password-match-msg" aria-live="polite"></div>
             </div>
             <button type="submit" class="btn btn-primary w-100 mb-3">Registrarme</button>
         </form>
