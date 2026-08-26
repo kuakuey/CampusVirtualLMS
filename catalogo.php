@@ -111,7 +111,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <p class="small text-muted mb-2">El plazo de inscripción finalizó.</p>
                     <button type="button" class="btn btn-primary w-100" disabled><i class="bi bi-plus-lg me-1"></i> Inscribirse</button>
                 <?php elseif ($tipoInscripcion === 'url'): ?>
-                    <p class="small text-muted mb-2">Solo puedes inscribirte con el enlace.</p>
                     <button type="button" class="btn btn-primary w-100" disabled><i class="bi bi-plus-lg me-1"></i> Inscribirse</button>
                 <?php elseif ($tipoInscripcion === 'password'): ?>
                     <form method="post">
