@@ -13,14 +13,11 @@ if (!$curso) {
 
 $esPropietario = $usuario['role'] === 'admin' || ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']);
 $matriculado = esta_matriculado($id);
+$vistaPrevia = !$esPropietario && !$matriculado && $usuario['role'] === 'student' && $curso['status'] === 'published';
 
-if (!$esPropietario && !$matriculado && $usuario['role'] !== 'admin') {
-    if ($curso['status'] === 'published' && $usuario['role'] === 'student') {
-        mensaje_flash('warning', 'Debes inscribirte para acceder al curso.');
-        redirigir('catalogo.php');
-    }
+if (!$esPropietario && !$matriculado && !$vistaPrevia) {
     mensaje_flash('danger', 'No tienes acceso a este curso.');
-    redirigir('cursos.php');
+    redirigir($usuario['role'] === 'student' ? 'catalogo.php' : 'cursos.php');
 }
 
 $pestaña = $_GET['pestaña'] ?? 'lecciones';
@@ -45,6 +42,16 @@ if ($seccionCurso === 'asistencia') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificar_csrf();
     $accion = $_POST['accion'] ?? '';
+
+    if ($accion === 'inscribirme' && $vistaPrevia) {
+        $resultado = intentar_inscripcion_curso($curso, trim($_POST['clave_inscripcion'] ?? ''));
+        mensaje_flash($resultado['tipo'], $resultado['mensaje']);
+        redirigir('curso.php?id=' . $id);
+    }
+
+    if ($vistaPrevia) {
+        redirigir('curso.php?id=' . $id);
+    }
 
     if ($accion === 'reordenar_lecciones' && $esPropietario) {
         header('Content-Type: application/json; charset=utf-8');
@@ -367,7 +374,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?php if ($curso['category_name']): ?><span class="badge bg-secondary"><?= escapar($curso['category_name']) ?></span><?php endif; ?>
                 </div>
                 <h1 class="h2 mb-2"><?= escapar($curso['title']) ?></h1>
-                <p class="text-muted mb-0">Docente: <?= escapar($curso['teacher_name']) ?></p>
             </div>
             <div class="d-flex gap-2 flex-wrap flex-shrink-0">
                 <?php if ($esPropietario): ?>
@@ -378,7 +384,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash me-1"></i> Eliminar</button>
                     </form>
                 <?php endif; ?>
-                <a href="<?= URL_APP ?>/cursos.php" class="btn btn-outline-secondary">Volver</a>
+                <a href="<?= URL_APP ?>/<?= $vistaPrevia ? 'catalogo.php' : 'cursos.php' ?>" class="btn btn-outline-secondary">Volver</a>
             </div>
         </div>
 
@@ -410,6 +416,45 @@ require_once __DIR__ . '/includes/encabezado.php';
 </div>
 <?php endif; ?>
 
+<?php if ($vistaPrevia): ?>
+<?php $tipoInscripcion = $curso['enrollment_type'] ?? 'public'; ?>
+<div class="panel mb-4">
+    <div class="panel-body">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <?= insignia_metodo_inscripcion($tipoInscripcion) ?>
+            <?php if (!inscripcion_abierta($curso)): ?>
+                <span class="badge bg-secondary">Inscripción cerrada</span>
+            <?php endif; ?>
+        </div>
+        <?php if ($tipoInscripcion === 'url'): ?>
+            <p class="mb-0">Este curso es privado. Puedes ver la información, pero no tienes acceso al contenido. Para inscribirte necesitas el enlace de inscripción.</p>
+        <?php elseif ($tipoInscripcion === 'password'): ?>
+            <p>Puedes ver la información del curso. Para acceder al contenido, inscríbete con la contraseña.</p>
+            <?php if (inscripcion_abierta($curso)): ?>
+            <form method="post" class="mt-3" style="max-width: 360px;">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="accion" value="inscribirme">
+                <div class="mb-2">
+                    <input type="password" name="clave_inscripcion" class="form-control" placeholder="Contraseña de inscripción" required>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-key me-1"></i> Inscribirme</button>
+            </form>
+            <?php endif; ?>
+        <?php else: ?>
+            <p>Inscríbete para acceder a lecciones, tareas y foro.</p>
+            <?php if (inscripcion_abierta($curso)): ?>
+            <form method="post">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="accion" value="inscribirme">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Inscribirme</button>
+            </form>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+</div>
+<?php require_once __DIR__ . '/includes/pie.php'; return; ?>
+<?php endif; ?>
+
 <?php if (!empty($curso['document_path'])): ?>
 <div class="panel mb-4">
     <div class="panel-body">
@@ -434,7 +479,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('url-inscripcion-curso').value)"><i class="bi bi-clipboard"></i> Copiar</button>
             </div>
         <?php elseif (($curso['enrollment_type'] ?? '') === 'password'): ?>
-            <p class="small text-muted mb-0">Los estudiantes deben ingresar la contraseña en el catálogo para inscribirse.</p>
+            <p class="small text-muted mb-0">Los estudiantes ven el curso, pero deben ingresar la contraseña para inscribirse.</p>
         <?php else: ?>
             <p class="small text-muted mb-0">Visible en el catálogo. Cualquier estudiante puede inscribirse.</p>
         <?php endif; ?>

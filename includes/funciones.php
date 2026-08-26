@@ -419,6 +419,43 @@ function inscribir_estudiante_en_curso(int $idCurso, int $idEstudiante): bool
     return $consulta->execute([$idCurso, $idEstudiante]);
 }
 
+function descripcion_lista_curso(array $curso, int $limite = 120): string
+{
+    $breve = trim((string) ($curso['short_description'] ?? ''));
+    if ($breve !== '') {
+        return $breve;
+    }
+    return mb_strimwidth(strip_tags((string) ($curso['description'] ?? '')), 0, $limite, '…');
+}
+
+function intentar_inscripcion_curso(array $curso, string $clave = ''): array
+{
+    $usuario = usuario_actual();
+    if (!$usuario || $usuario['role'] !== 'student') {
+        return ['tipo' => 'danger', 'mensaje' => 'Solo los estudiantes pueden inscribirse.'];
+    }
+    if (($curso['status'] ?? '') !== 'published') {
+        return ['tipo' => 'warning', 'mensaje' => 'Este curso aún no está publicado.'];
+    }
+    $tipo = $curso['enrollment_type'] ?? 'public';
+    if ($tipo === 'url') {
+        return ['tipo' => 'info', 'mensaje' => 'Este curso es privado. Solo puedes inscribirte con el enlace de inscripción.'];
+    }
+    if (!inscripcion_abierta($curso)) {
+        return ['tipo' => 'danger', 'mensaje' => 'El plazo de inscripción para este curso ha finalizado.'];
+    }
+    if (esta_matriculado((int) $curso['id'], (int) $usuario['id'])) {
+        return ['tipo' => 'info', 'mensaje' => 'Ya estás inscrito en este curso.'];
+    }
+    if ($tipo === 'password') {
+        if ($clave === '' || empty($curso['enrollment_password']) || !password_verify($clave, $curso['enrollment_password'])) {
+            return ['tipo' => 'danger', 'mensaje' => 'Contraseña de inscripción incorrecta.'];
+        }
+    }
+    inscribir_estudiante_en_curso((int) $curso['id'], (int) $usuario['id']);
+    return ['tipo' => 'success', 'mensaje' => 'Te has inscrito en «' . $curso['title'] . '».'];
+}
+
 function inscripcion_abierta(array $curso): bool
 {
     $fecha = $curso['enrollment_deadline'] ?? null;
@@ -442,7 +479,7 @@ function etiqueta_metodo_inscripcion(string $tipo): string
     switch ($tipo) {
         case 'public': return 'Público';
         case 'password': return 'Con contraseña';
-        case 'url': return 'Por URL';
+        case 'url': return 'Privado (URL)';
         default: return $tipo;
     }
 }
@@ -452,7 +489,7 @@ function insignia_metodo_inscripcion(string $tipo): string
     switch ($tipo) {
         case 'public': $clase = 'bg-success'; break;
         case 'password': $clase = 'bg-warning text-dark'; break;
-        case 'url': $clase = 'bg-info text-dark'; break;
+        case 'url': $clase = 'bg-dark'; break;
         default: $clase = 'bg-secondary';
     }
     return '<span class="badge ' . $clase . '">' . escapar(etiqueta_metodo_inscripcion($tipo)) . '</span>';

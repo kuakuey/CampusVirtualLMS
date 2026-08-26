@@ -10,20 +10,18 @@ $idCategoria = (int) ($_GET['categoria'] ?? 0);
 
 $categories = bd()->query('SELECT * FROM categories ORDER BY name')->fetchAll();
 
-$sql = 'SELECT c.*, u.name AS teacher_name, cat.name AS category_name,
+$sql = 'SELECT c.*, cat.name AS category_name,
                (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students,
                EXISTS(SELECT 1 FROM enrollments e WHERE e.course_id = c.id AND e.student_id = ? AND e.status = "active") AS enrolled
         FROM courses c
-        JOIN users u ON u.id = c.teacher_id
         LEFT JOIN categories cat ON cat.id = c.category_id
-        WHERE c.status = "published" AND c.enrollment_type IN ("public", "password")
-        AND (c.enrollment_deadline IS NULL OR c.enrollment_deadline >= CURDATE())';
+        WHERE c.status = "published"';
 $params = [$usuario['id']];
 
 if ($buscar !== '') {
-    $sql .= ' AND (c.title LIKE ? OR c.description LIKE ? OR c.code LIKE ?)';
+    $sql .= ' AND (c.title LIKE ? OR c.short_description LIKE ? OR c.description LIKE ? OR c.code LIKE ?)';
     $like = '%' . $buscar . '%';
-    array_push($params, $like, $like, $like);
+    array_push($params, $like, $like, $like, $like);
 }
 if ($idCategoria > 0) {
     $sql .= ' AND c.category_id = ?';
@@ -39,23 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_curso_inscripcion'
     verificar_csrf();
     $idCurso = (int) $_POST['id_curso_inscripcion'];
     $curso = obtener_curso($idCurso);
-    if ($curso && $curso['status'] === 'published' && in_array($curso['enrollment_type'] ?? 'public', ['public', 'password'], true)) {
-        if (!inscripcion_abierta($curso)) {
-            mensaje_flash('danger', 'El plazo de inscripción para este curso ha finalizado.');
-        } elseif (esta_matriculado($idCurso)) {
-            mensaje_flash('info', 'Ya estás inscrito en este curso.');
-        } elseif (($curso['enrollment_type'] ?? 'public') === 'password') {
-            $clave = trim($_POST['clave_inscripcion'] ?? '');
-            if ($clave === '' || empty($curso['enrollment_password']) || !password_verify($clave, $curso['enrollment_password'])) {
-                mensaje_flash('danger', 'Contraseña de inscripción incorrecta.');
-            } else {
-                inscribir_estudiante_en_curso($idCurso, (int) $usuario['id']);
-                mensaje_flash('success', 'Te has inscrito en «' . $curso['title'] . '».');
-            }
-        } else {
-            inscribir_estudiante_en_curso($idCurso, (int) $usuario['id']);
-            mensaje_flash('success', 'Te has inscrito en «' . $curso['title'] . '».');
-        }
+    if ($curso && $curso['status'] === 'published') {
+        $resultado = intentar_inscripcion_curso($curso, trim($_POST['clave_inscripcion'] ?? ''));
+        mensaje_flash($resultado['tipo'], $resultado['mensaje']);
     } else {
         mensaje_flash('danger', 'Curso no disponible.');
     }
@@ -103,16 +87,27 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="course-banner"><span class="code"><?= escapar($curso['code']) ?></span></div>
             <div class="course-body">
                 <h3><?= escapar($curso['title']) ?></h3>
-                <p><?= escapar(mb_strimwidth(strip_tags($curso['description'] ?? ''), 0, 110, '…')) ?></p>
+                <?php $textoBreve = descripcion_lista_curso($curso); ?>
+                <?php if ($textoBreve !== ''): ?>
+                    <p><?= escapar($textoBreve) ?></p>
+                <?php endif; ?>
                 <div class="small text-muted mb-3">
-                    <?= escapar($curso['teacher_name']) ?>
-                    · <?= escapar($curso['category_name'] ?? 'General') ?> · <?= (int) $curso['students'] ?> alumnos
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <?= insignia_metodo_inscripcion($curso['enrollment_type'] ?? 'public') ?>
+                        <span><?= escapar($curso['category_name'] ?? 'General') ?> · <?= (int) $curso['students'] ?> alumnos</span>
+                    </div>
                     <?php if (!empty($curso['enrollment_deadline'])): ?>
                         <div class="mt-1"><i class="bi bi-calendar-event me-1"></i>Inscripción hasta <?= formatear_fecha($curso['enrollment_deadline']) ?></div>
                     <?php endif; ?>
                 </div>
                 <?php if ($curso['enrolled']): ?>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-success w-100"><i class="bi bi-check2 me-1"></i> Ya inscrito · Abrir</a>
+                <?php elseif (!inscripcion_abierta($curso)): ?>
+                    <p class="small text-muted mb-2">El plazo de inscripción finalizó. Puedes ver la información del curso.</p>
+                    <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-primary w-100">Ver curso</a>
+                <?php elseif (($curso['enrollment_type'] ?? 'public') === 'url'): ?>
+                    <p class="small text-muted mb-2">Curso privado. Puedes verlo, pero la inscripción es solo con el enlace.</p>
+                    <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-primary w-100">Ver curso</a>
                 <?php elseif (($curso['enrollment_type'] ?? 'public') === 'password'): ?>
                     <form method="post">
                         <?= campo_csrf() ?>
@@ -120,14 +115,16 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <div class="mb-2">
                             <input type="password" name="clave_inscripcion" class="form-control form-control-sm" placeholder="Contraseña del curso" required>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-key me-1"></i> Inscribirme</button>
+                        <button type="submit" class="btn btn-primary w-100 mb-2"><i class="bi bi-key me-1"></i> Inscribirme</button>
                     </form>
+                    <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-secondary w-100">Ver curso</a>
                 <?php else: ?>
-                    <form method="post">
+                    <form method="post" class="mb-2">
                         <?= campo_csrf() ?>
                         <input type="hidden" name="id_curso_inscripcion" value="<?= (int) $curso['id'] ?>">
                         <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i> Inscribirme</button>
                     </form>
+                    <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-secondary w-100">Ver curso</a>
                 <?php endif; ?>
             </div>
         </div>

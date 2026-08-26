@@ -145,12 +145,14 @@ require_once __DIR__ . '/includes/encabezado.php';
                                 </div>
                                 <div class="course-body">
                                     <h3><?= escapar($curso['title']) ?></h3>
-                                    <p class="mb-2"><?= escapar(mb_strimwidth(strip_tags($curso['description'] ?? ''), 0, 90, '…')) ?></p>
+                                    <?php $textoBreve = descripcion_lista_curso($curso, 90); ?>
+                                    <?php if ($textoBreve !== ''): ?>
+                                        <p class="mb-2"><?= escapar($textoBreve) ?></p>
+                                    <?php endif; ?>
                                     <div class="d-flex justify-content-between align-items-center mt-auto">
                                         <small class="text-muted">
                                             <?= escapar($curso['category_name'] ?? 'Sin categoría') ?>
                                             <?php if (isset($curso['students'])): ?> · <?= (int) $curso['students'] ?> alumnos<?php endif; ?>
-                                            <?php if (!empty($curso['teacher_name'])): ?> · <?= escapar($curso['teacher_name']) ?><?php endif; ?>
                                         </small>
                                         <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-sm btn-primary">Abrir</a>
                                     </div>

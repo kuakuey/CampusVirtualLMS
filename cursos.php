@@ -44,8 +44,9 @@ if ($usuario['role'] === 'teacher') {
 }
 
 if ($buscar !== '') {
-    $sql .= ' AND (c.title LIKE ? OR c.code LIKE ? OR c.description LIKE ?)';
+    $sql .= ' AND (c.title LIKE ? OR c.code LIKE ? OR c.short_description LIKE ? OR c.description LIKE ?)';
     $like = '%' . $buscar . '%';
+    $params[] = $like;
     $params[] = $like;
     $params[] = $like;
     $params[] = $like;
@@ -117,9 +118,11 @@ require_once __DIR__ . '/includes/encabezado.php';
             </div>
             <div class="course-body">
                 <h3><?= escapar($curso['title']) ?></h3>
-                <p><?= escapar(mb_strimwidth(strip_tags($curso['description'] ?? ''), 0, 100, '…')) ?></p>
+                <?php $textoBreve = descripcion_lista_curso($curso, 100); ?>
+                <?php if ($textoBreve !== ''): ?>
+                    <p><?= escapar($textoBreve) ?></p>
+                <?php endif; ?>
                 <div class="small text-muted mb-3">
-                    <div><i class="bi bi-person me-1"></i><?= escapar($curso['teacher_name']) ?></div>
                     <div><i class="bi bi-tag me-1"></i><?= escapar($curso['category_name'] ?? 'Sin categoría') ?></div>
                     <div><i class="bi bi-people me-1"></i><?= (int) $curso['students'] ?> alumnos · <?= (int) $curso['lessons_count'] ?> lecciones</div>
                 </div>

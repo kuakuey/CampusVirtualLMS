@@ -21,10 +21,6 @@ if ($curso && $usuario['role'] === 'teacher' && (int) $curso['teacher_id'] !== (
 $tituloPagina = $esNuevo ? 'Nuevo curso' : 'Editar curso';
 
 $categories = bd()->query('SELECT * FROM categories ORDER BY name')->fetchAll();
-$teachers = [];
-if ($usuario['role'] === 'admin') {
-    $teachers = bd()->query('SELECT id, name FROM users WHERE role = "teacher" AND status = 1 ORDER BY name')->fetchAll();
-}
 
 $errors = [];
 $codigoGenerado = generar_codigo_curso_unico();
@@ -44,20 +40,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $title = trim($_POST['title'] ?? '');
     $code = strtoupper(trim($_POST['code'] ?? ''));
+    $shortDescription = trim($_POST['short_description'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $idCategoria = (int) ($_POST['category_id'] ?? 0) ?: null;
     $estado = $_POST['estado'] ?? 'draft';
     $tipoInscripcion = $_POST['enrollment_type'] ?? 'public';
     $claveInscripcion = trim($_POST['enrollment_password'] ?? '');
     $fechaLimiteInscripcion = trim($_POST['enrollment_deadline'] ?? '');
-    $teacherId = $usuario['role'] === 'admin' ? (int) ($_POST['teacher_id'] ?? 0) : (int) $usuario['id'];
+    $teacherId = $esNuevo ? (int) $usuario['id'] : (int) $curso['teacher_id'];
 
     if ($title === '') $errors[] = 'El título es obligatorio.';
     if ($code === '') $errors[] = 'El código es obligatorio.';
     if (!preg_match('/^CDA-[A-Z0-9]+$/', $code)) $errors[] = 'El código debe empezar por CDA-.';
+    if (mb_strlen($shortDescription) > 255) $errors[] = 'La descripción breve no puede superar 255 caracteres.';
     if (!in_array($estado, ['draft', 'published', 'archived'], true)) $estado = 'draft';
     if (!in_array($tipoInscripcion, ['public', 'password', 'url'], true)) $tipoInscripcion = 'public';
-    if ($usuario['role'] === 'admin' && $teacherId <= 0) $errors[] = 'Selecciona un docente.';
     if ($tipoInscripcion === 'password' && $claveInscripcion === '' && ($esNuevo || empty($curso['enrollment_password']))) {
         $errors[] = 'Define una contraseña de inscripción.';
     }
@@ -88,10 +85,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($esNuevo) {
             $stmt = bd()->prepare(
-                'INSERT INTO courses (category_id, teacher_id, title, code, description, status, enrollment_type, enrollment_password, enrollment_token, enrollment_deadline)
-                 VALUES (?,?,?,?,?,?,?,?,?,?)'
+                'INSERT INTO courses (category_id, teacher_id, title, code, short_description, description, status, enrollment_type, enrollment_password, enrollment_token, enrollment_deadline)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?)'
             );
-            $stmt->execute([$idCategoria, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion]);
+            $stmt->execute([$idCategoria, $teacherId, $title, $code, $shortDescription !== '' ? $shortDescription : null, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion]);
             $id = (int) bd()->lastInsertId();
             mensaje_flash('success', 'Curso creado correctamente.');
         } else {
@@ -101,9 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $token = $curso['enrollment_token'] ?? null;
             }
             $stmt = bd()->prepare(
-                'UPDATE courses SET category_id=?, teacher_id=?, title=?, code=?, description=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=?, enrollment_deadline=? WHERE id=?'
+                'UPDATE courses SET category_id=?, teacher_id=?, title=?, code=?, short_description=?, description=?, status=?, enrollment_type=?, enrollment_password=?, enrollment_token=?, enrollment_deadline=? WHERE id=?'
             );
-            $stmt->execute([$idCategoria, $teacherId, $title, $code, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion, $id]);
+            $stmt->execute([$idCategoria, $teacherId, $title, $code, $shortDescription !== '' ? $shortDescription : null, $description, $estado, $tipoInscripcion, $claveHash, $token, $fechaLimiteInscripcion, $id]);
             mensaje_flash('success', 'Curso actualizado.');
         }
         redirigir('curso.php?id=' . $id);
@@ -114,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $curso = array_merge($curso, [
             'title' => $title,
             'code' => $code,
+            'short_description' => $shortDescription,
             'description' => $description,
             'category_id' => $idCategoria,
             'status' => $estado,
@@ -127,12 +125,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_POST = [
         'title' => '',
         'code' => $codigoGenerado,
+        'short_description' => '',
         'description' => '',
         'category_id' => '',
         'status' => 'draft',
         'enrollment_type' => 'public',
         'enrollment_deadline' => '',
-        'teacher_id' => $usuario['role'] === 'admin' ? '' : $usuario['id'],
     ];
 } else {
     $_POST = $curso;
@@ -168,18 +166,24 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <small class="text-muted">Generado automáticamente</small>
                 </div>
                 <div class="col-12">
-                    <label class="form-label">Descripción (HTML permitido)</label>
-                    <textarea name="description" class="form-control" rows="6"><?= escapar($_POST['description'] ?? '') ?></textarea>
-                    <small class="text-muted">Puedes usar etiquetas HTML para formato, listas, enlaces e imágenes.</small>
+                    <label class="form-label">Descripción breve</label>
+                    <textarea name="short_description" class="form-control" rows="2" maxlength="255" placeholder="Se muestra en el listado y el catálogo de cursos"><?= escapar($_POST['short_description'] ?? '') ?></textarea>
+                    <small class="text-muted">Hasta 255 caracteres. Aparece en las tarjetas de cursos.</small>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Descripción larga</label>
+                    <textarea name="description" class="form-control" rows="6" placeholder="Se muestra al abrir el curso"><?= escapar($_POST['description'] ?? '') ?></textarea>
+                    <small class="text-muted">Puedes usar HTML para formato, listas, enlaces e imágenes. Se ve al entrar al curso.</small>
                 </div>
 
                 <div class="col-12">
                     <label class="form-label">Método de inscripción</label>
                     <select name="enrollment_type" class="form-select" id="enrollment_type">
-                        <option value="public" <?= ($_POST['enrollment_type'] ?? 'public') === 'public' ? 'selected' : '' ?>>Público — cualquier estudiante puede inscribirse desde el catálogo</option>
-                        <option value="password" <?= ($_POST['enrollment_type'] ?? '') === 'password' ? 'selected' : '' ?>>Con contraseña — requiere clave para inscribirse</option>
-                        <option value="url" <?= ($_POST['enrollment_type'] ?? '') === 'url' ? 'selected' : '' ?>>Por URL — inscripción automática al abrir el enlace</option>
+                        <option value="public" <?= ($_POST['enrollment_type'] ?? 'public') === 'public' ? 'selected' : '' ?>>Público — visible y cualquiera puede inscribirse</option>
+                        <option value="password" <?= ($_POST['enrollment_type'] ?? '') === 'password' ? 'selected' : '' ?>>Con contraseña — visible; se inscribe con clave</option>
+                        <option value="url" <?= ($_POST['enrollment_type'] ?? '') === 'url' ? 'selected' : '' ?>>Por URL (privado) — visible sin acceso; inscripción solo con el enlace</option>
                     </select>
+                    <small class="text-muted">Todos los cursos publicados se ven en el catálogo. URL y contraseña no dan acceso al contenido hasta inscribirse.</small>
                 </div>
 
                 <div class="col-12" id="campo-clave-inscripcion" style="display:none;">
@@ -190,7 +194,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <div class="col-md-6" id="campo-fecha-limite-inscripcion">
                     <label class="form-label">Fecha límite de inscripción</label>
                     <input type="date" name="enrollment_deadline" class="form-control" value="<?= escapar(fecha_para_input($_POST['enrollment_deadline'] ?? null)) ?>">
-                    <small class="text-muted">Opcional. Después de esta fecha no habrá nuevas inscripciones y el curso dejará de aparecer en el catálogo.</small>
+                    <small class="text-muted">Opcional. Después de esta fecha no habrá nuevas inscripciones.</small>
                 </div>
 
                 <?php if (!$esNuevo): ?>
@@ -200,7 +204,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <input type="text" class="form-control" id="url-inscripcion" value="<?= escapar($urlInscripcion) ?>" readonly>
                         <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('url-inscripcion').value)"><i class="bi bi-clipboard"></i></button>
                     </div>
-                    <small class="text-muted">Comparte este enlace. Al abrirlo, el estudiante se inscribe automáticamente.</small>
+                    <small class="text-muted">Comparte este enlace. Al abrirlo, el estudiante se inscribe automáticamente. El curso se ve en el catálogo, pero sin acceso al contenido.</small>
                 </div>
                 <?php endif; ?>
 
@@ -221,17 +225,6 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <?php if ($usuario['role'] === 'admin'): ?>
-                <div class="col-md-6">
-                    <label class="form-label">Docente</label>
-                    <select name="teacher_id" class="form-select" required>
-                        <option value="">Seleccionar...</option>
-                        <?php foreach ($teachers as $t): ?>
-                            <option value="<?= (int) $t['id'] ?>" <?= (int) ($_POST['teacher_id'] ?? 0) === (int) $t['id'] ? 'selected' : '' ?>><?= escapar($t['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php endif; ?>
                 <div class="col-12 d-flex gap-2 flex-wrap">
                     <button type="submit" class="btn btn-primary"><?= $esNuevo ? 'Crear curso' : 'Guardar' ?></button>
                     <a href="<?= URL_APP ?>/<?= $esNuevo ? 'cursos.php' : 'curso.php?id=' . $id ?>" class="btn btn-outline-secondary">Cancelar</a>
