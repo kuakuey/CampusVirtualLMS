@@ -39,6 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_curso_inscripcion'
     if ($curso && !in_array($curso['status'] ?? '', ['draft', 'archived'], true)) {
         $resultado = intentar_inscripcion_curso($curso, trim($_POST['clave_inscripcion'] ?? ''));
         mensaje_flash($resultado['tipo'], $resultado['mensaje']);
+        if ($resultado['tipo'] === 'success') {
+            redirigir('curso.php?id=' . $idCurso);
+        }
     } else {
         mensaje_flash('danger', 'Curso no disponible.');
     }
@@ -109,16 +112,14 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <div class="mb-2">
                             <input type="password" name="clave_inscripcion" class="form-control form-control-sm" placeholder="Contraseña del curso" required>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 mb-2"><i class="bi bi-key me-1"></i> Inscribirme</button>
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-key me-1"></i> Inscribirme</button>
                     </form>
-                    <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-secondary w-100">Ver curso</a>
                 <?php else: ?>
-                    <form method="post" class="mb-2">
+                    <form method="post">
                         <?= campo_csrf() ?>
                         <input type="hidden" name="id_curso_inscripcion" value="<?= (int) $curso['id'] ?>">
                         <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i> Inscribirme</button>
                     </form>
-                    <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-secondary w-100">Ver curso</a>
                 <?php endif; ?>
             </div>
         </div>
