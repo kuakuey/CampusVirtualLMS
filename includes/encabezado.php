@@ -33,14 +33,16 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
                         <i class="bi bi-speedometer2 me-1"></i> Panel
                     </a>
                 </li>
+                <?php if ($usuario['role'] !== 'student'): ?>
                 <li class="nav-item">
                     <a class="nav-link <?= in_array($paginaActual, ['cursos.php','curso.php','leccion.php','leccion-formulario.php','curso-formulario.php','curso-asistencia.php'], true) ? 'active' : '' ?>" href="<?= URL_CURSOS ?>">
                         <i class="bi bi-journal-bookmark me-1"></i> Cursos
                     </a>
                 </li>
+                <?php endif; ?>
                 <?php if ($usuario['role'] === 'student'): ?>
                 <li class="nav-item">
-                    <a class="nav-link <?= $paginaActual === 'catalogo.php' ? 'active' : '' ?>" href="<?= URL_CATALOGO ?>">
+                    <a class="nav-link <?= in_array($paginaActual, ['catalogo.php','curso.php','leccion.php'], true) ? 'active' : '' ?>" href="<?= URL_CATALOGO ?>">
                         <i class="bi bi-grid me-1"></i> Cursos disponibles
                     </a>
                 </li>
