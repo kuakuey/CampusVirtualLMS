@@ -93,19 +93,27 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php if ($textoBreve !== ''): ?>
                     <p><?= escapar($textoBreve) ?></p>
                 <?php endif; ?>
-                <?php if (!empty($curso['enrollment_deadline'])): ?>
+                <?php $tipoInscripcion = $curso['enrollment_type'] ?? 'public'; ?>
                 <div class="small text-muted mb-3">
-                    <i class="bi bi-calendar-event me-1"></i>Inscripción hasta <?= formatear_fecha($curso['enrollment_deadline']) ?>
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                        <span>Inscripción:</span>
+                        <?= insignia_metodo_inscripcion($tipoInscripcion) ?>
+                    </div>
+                    <?php if (!empty($curso['enrollment_deadline'])): ?>
+                    <div>
+                        <i class="bi bi-calendar-event me-1"></i>Hasta <?= formatear_fecha($curso['enrollment_deadline']) ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
                 <?php if ($curso['enrolled']): ?>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-success w-100"><i class="bi bi-check2 me-1"></i> Ya inscrito · Abrir</a>
                 <?php elseif (!inscripcion_abierta($curso)): ?>
                     <p class="small text-muted mb-2">El plazo de inscripción finalizó. Puedes ver la información del curso.</p>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-primary w-100">Ver curso</a>
-                <?php elseif (($curso['enrollment_type'] ?? 'public') === 'url'): ?>
+                <?php elseif ($tipoInscripcion === 'url'): ?>
+                    <p class="small text-muted mb-2">Para inscribirte necesitas el enlace de inscripción.</p>
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-primary w-100">Ver curso</a>
-                <?php elseif (($curso['enrollment_type'] ?? 'public') === 'password'): ?>
+                <?php elseif ($tipoInscripcion === 'password'): ?>
                     <form method="post">
                         <?= campo_csrf() ?>
                         <input type="hidden" name="id_curso_inscripcion" value="<?= (int) $curso['id'] ?>">
