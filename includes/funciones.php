@@ -176,7 +176,13 @@ function obtener_leccion(int $id): ?array
 
 function obtener_subcursos_curso(int $idCurso): array
 {
-    $consulta = bd()->prepare('SELECT * FROM subcourses WHERE course_id = ? ORDER BY sort_order, id');
+    $consulta = bd()->prepare(
+        'SELECT s.*, u.name AS teacher_name
+         FROM subcourses s
+         LEFT JOIN users u ON u.id = s.teacher_id
+         WHERE s.course_id = ?
+         ORDER BY s.sort_order, s.id'
+    );
     $consulta->execute([$idCurso]);
     return $consulta->fetchAll();
 }
@@ -201,16 +207,37 @@ function asegurar_subcurso_default(int $idCurso): int
 
 function obtener_subcurso(int $id, ?int $idCurso = null): ?array
 {
-    $sql = 'SELECT * FROM subcourses WHERE id = ?';
+    $sql = 'SELECT s.*, u.name AS teacher_name
+            FROM subcourses s
+            LEFT JOIN users u ON u.id = s.teacher_id
+            WHERE s.id = ?';
     $params = [$id];
     if ($idCurso !== null) {
-        $sql .= ' AND course_id = ?';
+        $sql .= ' AND s.course_id = ?';
         $params[] = $idCurso;
     }
     $consulta = bd()->prepare($sql);
     $consulta->execute($params);
     $subcurso = $consulta->fetch();
     return $subcurso ?: null;
+}
+
+function id_docente_asignable(int $idDocente): ?int
+{
+    if ($idDocente <= 0) {
+        return null;
+    }
+    $consulta = bd()->prepare('SELECT id FROM users WHERE id = ? AND status = 1 AND role IN ("teacher", "admin")');
+    $consulta->execute([$idDocente]);
+    $id = $consulta->fetchColumn();
+    return $id ? (int) $id : null;
+}
+
+function obtener_docentes_activos(): array
+{
+    return bd()->query(
+        'SELECT id, name FROM users WHERE status = 1 AND role IN ("teacher", "admin") ORDER BY name'
+    )->fetchAll();
 }
 
 function obtener_lecciones_curso(int $idCurso): array
