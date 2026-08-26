@@ -30,7 +30,7 @@ $sql = 'SELECT c.*, u.name AS teacher_name, cat.name AS category_name,
                (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students,
                (SELECT COUNT(*) FROM lessons l WHERE l.course_id = c.id) AS lessons_count
         FROM courses c
-        JOIN users u ON u.id = c.teacher_id
+        LEFT JOIN users u ON u.id = c.teacher_id
         LEFT JOIN categories cat ON cat.id = c.category_id
         WHERE 1=1';
 $params = [];
@@ -52,9 +52,13 @@ if ($buscar !== '') {
     $params[] = $like;
 }
 
-if ($estado !== '' && in_array($estado, ['draft', 'published', 'archived'], true)) {
+if ($estado === 'all') {
+    // Sin filtro de estado
+} elseif ($estado !== '' && in_array($estado, ['draft', 'published', 'archived'], true)) {
     $sql .= ' AND c.status = ?';
     $params[] = $estado;
+} else {
+    $sql .= ' AND c.status NOT IN ("draft", "archived")';
 }
 
 $sql .= ' ORDER BY c.created_at DESC';
@@ -88,10 +92,11 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="col-md-4">
                 <label class="form-label">Estado</label>
                 <select name="estado" class="form-select">
-                    <option value="">Todos</option>
+                    <option value="" <?= $estado === '' ? 'selected' : '' ?>>Disponibles</option>
                     <option value="published" <?= $estado === 'published' ? 'selected' : '' ?>>Publicado</option>
                     <option value="draft" <?= $estado === 'draft' ? 'selected' : '' ?>>Borrador</option>
                     <option value="archived" <?= $estado === 'archived' ? 'selected' : '' ?>>Archivado</option>
+                    <option value="all" <?= $estado === 'all' ? 'selected' : '' ?>>Todos los estados</option>
                 </select>
             </div>
             <?php endif; ?>

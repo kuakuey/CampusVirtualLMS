@@ -15,7 +15,7 @@ $sql = 'SELECT c.*, cat.name AS category_name,
                EXISTS(SELECT 1 FROM enrollments e WHERE e.course_id = c.id AND e.student_id = ? AND e.status = "active") AS enrolled
         FROM courses c
         LEFT JOIN categories cat ON cat.id = c.category_id
-        WHERE c.status = "published"';
+        WHERE c.status NOT IN ("draft", "archived")';
 $params = [$usuario['id']];
 
 if ($buscar !== '') {
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_curso_inscripcion'
     verificar_csrf();
     $idCurso = (int) $_POST['id_curso_inscripcion'];
     $curso = obtener_curso($idCurso);
-    if ($curso && $curso['status'] === 'published') {
+    if ($curso && !in_array($curso['status'] ?? '', ['draft', 'archived'], true)) {
         $resultado = intentar_inscripcion_curso($curso, trim($_POST['clave_inscripcion'] ?? ''));
         mensaje_flash($resultado['tipo'], $resultado['mensaje']);
     } else {
@@ -51,8 +51,8 @@ require_once __DIR__ . '/includes/encabezado.php';
 
 <div class="page-header">
     <div>
-        <h1>Catálogo</h1>
-        <p class="subtitle">Explora e inscríbete en cursos publicados</p>
+        <h1>Cursos disponibles</h1>
+        <p class="subtitle">Todos los cursos publicados. No se muestran borradores ni archivados.</p>
     </div>
 </div>
 

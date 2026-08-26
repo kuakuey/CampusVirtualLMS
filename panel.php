@@ -22,6 +22,7 @@ if ($usuario['role'] === 'admin') {
          FROM courses c
          JOIN users u ON u.id = c.teacher_id
          LEFT JOIN categories cat ON cat.id = c.category_id
+         WHERE c.status NOT IN ("draft", "archived")
          ORDER BY c.created_at DESC LIMIT 6'
     );
     $cursosRecientes = $stmt->fetchAll();
@@ -38,7 +39,7 @@ if ($usuario['role'] === 'admin') {
                 (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students
          FROM courses c
          LEFT JOIN categories cat ON cat.id = c.category_id
-         WHERE c.teacher_id = ?
+         WHERE c.teacher_id = ? AND c.status NOT IN ("draft", "archived")
          ORDER BY c.created_at DESC'
     );
     $stmt->execute([$tid]);
@@ -76,7 +77,7 @@ if ($usuario['role'] === 'admin') {
          JOIN courses c ON c.id = e.course_id
          JOIN users u ON u.id = c.teacher_id
          LEFT JOIN categories cat ON cat.id = c.category_id
-         WHERE e.student_id = ? AND e.status = "active"
+         WHERE e.student_id = ? AND e.status = "active" AND c.status NOT IN ("draft", "archived")
          ORDER BY e.enrolled_at DESC'
     );
     $stmt->execute([$sid]);
