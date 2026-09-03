@@ -398,7 +398,7 @@ require_once __DIR__ . '/includes/encabezado.php';
 
 <div class="row g-4 mb-4 course-hero align-items-stretch">
     <div class="col-12 course-hero-side">
-        <div class="panel h-100 course-intro-panel">
+        <div class="panel course-intro-panel">
             <div class="panel-body">
                 <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
                     <span class="badge text-bg-light border"><?= escapar($curso['code']) ?></span>
