@@ -98,7 +98,11 @@ foreach ($leccionesModuloActual as $i => $sib) {
 $urlVolverCurso = URL_APP . '/curso.php?id=' . $idCurso . '&pestaña=lecciones'
     . ($mostrarSubcursosSidebar && $idModuloLeccion > 0 ? '&modulo=' . $idModuloLeccion : '');
 
-$tituloPagina = $lesson['title'];
+$datosLeccionActual = datos_leccion_lista($lesson);
+$tituloPagina = $datosLeccionActual['titulo'];
+if ($datosLeccionActual['fecha'] !== '') {
+    $tituloPagina .= ' · ' . $datosLeccionActual['fecha'];
+}
 require_once __DIR__ . '/includes/encabezado.php';
 ?>
 
@@ -157,12 +161,18 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <div class="list-group-item small text-muted">Sin lecciones en este módulo.</div>
                     <?php else: ?>
                         <?php foreach ($leccionesModuloActual as $i => $sib): ?>
-                            <?php $completada = in_array((int) $sib['id'], $idsCompletadas, true); ?>
+                            <?php
+                            $completada = in_array((int) $sib['id'], $idsCompletadas, true);
+                            $datosLeccion = datos_leccion_lista($sib);
+                            ?>
                             <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $sib['id'] ?>"
                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
-                                <span>
+                                <span class="min-w-0">
                                     <span class="text-muted me-1"><?= $i + 1 ?>.</span>
-                                    <?= escapar($sib['title']) ?>
+                                    <span class="d-block text-truncate"><?= escapar($datosLeccion['titulo']) ?></span>
+                                    <?php if ($datosLeccion['fecha'] !== ''): ?>
+                                        <span class="small opacity-75"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
+                                    <?php endif; ?>
                                 </span>
                                 <?php if ($mostrarProgreso): ?>
                                     <?php if ($completada): ?>
@@ -176,12 +186,18 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?php endif; ?>
                 <?php else: ?>
                     <?php foreach ($siblings as $i => $sib): ?>
-                        <?php $completada = in_array((int) $sib['id'], $idsCompletadas, true); ?>
+                        <?php
+                        $completada = in_array((int) $sib['id'], $idsCompletadas, true);
+                        $datosLeccion = datos_leccion_lista($sib);
+                        ?>
                         <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $sib['id'] ?>"
                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
-                            <span>
+                            <span class="min-w-0">
                                 <span class="text-muted me-1"><?= $i + 1 ?>.</span>
-                                <?= escapar($sib['title']) ?>
+                                <span class="d-block text-truncate"><?= escapar($datosLeccion['titulo']) ?></span>
+                                <?php if ($datosLeccion['fecha'] !== ''): ?>
+                                    <span class="small opacity-75"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
+                                <?php endif; ?>
                             </span>
                             <?php if ($mostrarProgreso): ?>
                                 <?php if ($completada): ?>
@@ -204,7 +220,12 @@ require_once __DIR__ . '/includes/encabezado.php';
         <div class="panel">
             <?php if ($esPropietario || $puedeVerSeguimiento): ?>
             <div class="panel-header">
-                <h2 class="mb-0"><?= escapar($lesson['title']) ?></h2>
+                <div>
+                    <h2 class="mb-0"><?= escapar($datosLeccionActual['titulo']) ?></h2>
+                    <?php if ($datosLeccionActual['fecha'] !== ''): ?>
+                        <p class="small text-muted mb-0 mt-1"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccionActual['fecha']) ?></p>
+                    <?php endif; ?>
+                </div>
                 <div class="d-flex gap-2 flex-wrap">
                     <?php if ($puedeVerSeguimiento): ?>
                     <a href="<?= escapar(url_asistencia_sesion_curso($idCurso, ['sesion' => $id])) ?>" class="btn btn-sm btn-outline-secondary">
@@ -213,6 +234,15 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?php endif; ?>
                     <?php if ($esPropietario): ?>
                     <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= $id ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="panel-header">
+                <div>
+                    <h2 class="mb-0"><?= escapar($datosLeccionActual['titulo']) ?></h2>
+                    <?php if ($datosLeccionActual['fecha'] !== ''): ?>
+                        <p class="small text-muted mb-0 mt-1"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccionActual['fecha']) ?></p>
                     <?php endif; ?>
                 </div>
             </div>

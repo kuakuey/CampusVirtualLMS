@@ -85,13 +85,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 }
 
+$datosLeccionForm = datos_leccion_lista($leccion);
+
 require_once __DIR__ . '/includes/encabezado.php';
 ?>
 
 <div class="page-header">
     <div>
         <h1>Editar lección</h1>
-        <p class="subtitle"><?= escapar($curso['title']) ?> · <?= escapar($leccion['title']) ?></p>
+        <p class="subtitle"><?= escapar($curso['title']) ?> · <?= escapar($datosLeccionForm['titulo']) ?><?php if ($datosLeccionForm['fecha'] !== ''): ?> · <?= escapar($datosLeccionForm['fecha']) ?><?php endif; ?></p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
         <a href="<?= URL_APP ?>/leccion.php?id=<?= $id ?>" class="btn btn-outline-primary"><i class="bi bi-eye me-1"></i> Ver lección</a>
@@ -111,7 +113,7 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="row g-3 mb-3">
                 <div class="col-md-8">
                     <label class="form-label">Título</label>
-                    <input type="text" name="title" class="form-control" value="<?= escapar($leccion['title']) ?>" required>
+                    <input type="text" name="title" class="form-control" value="<?= escapar($datosLeccionForm['titulo']) ?>" required>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Fecha de la sesión</label>

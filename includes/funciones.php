@@ -130,6 +130,20 @@ function formatear_fecha(?string $fechaHora, bool $conHora = false): string
     return $conHora ? date('d/m/Y H:i', $marca) : date('d/m/Y', $marca);
 }
 
+function datos_leccion_lista(array $leccion): array
+{
+    $titulo = trim((string) ($leccion['title'] ?? ''));
+    $fechaRaw = $leccion['lesson_date'] ?? null;
+    $fecha = $fechaRaw ? formatear_fecha($fechaRaw) : '';
+    if ($fecha !== '' && $fecha !== '—') {
+        $sufijo = ' ' . $fecha;
+        if (strlen($titulo) >= strlen($sufijo) && substr($titulo, -strlen($sufijo)) === $sufijo) {
+            $titulo = trim(substr($titulo, 0, -strlen($sufijo)));
+        }
+    }
+    return ['titulo' => $titulo, 'fecha' => $fecha];
+}
+
 function token_csrf(): string
 {
     if (empty($_SESSION['token_csrf'])) {

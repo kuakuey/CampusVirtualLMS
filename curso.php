@@ -618,14 +618,22 @@ require_once __DIR__ . '/includes/encabezado.php';
                              data-csrf="<?= escapar(token_csrf()) ?>"
                              data-url="<?= escapar(URL_APP . '/curso.php?id=' . $id) ?>">
                             <?php foreach ($listaLeccionesVista as $i => $lesson): ?>
-                                <?php $leccionCompletada = in_array((int) $lesson['id'], $idsLeccionesCompletadas, true); ?>
+                                <?php
+                                $leccionCompletada = in_array((int) $lesson['id'], $idsLeccionesCompletadas, true);
+                                $datosLeccion = datos_leccion_lista($lesson);
+                                ?>
                                 <div class="lesson-item" data-lesson-id="<?= (int) $lesson['id'] ?>">
                                     <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1">
                                         <?php if ($esPropietario): ?>
                                         <span class="lesson-drag-handle" title="Arrastrar para reordenar"><i class="bi bi-grip-vertical"></i></span>
                                         <?php endif; ?>
                                         <span class="badge bg-light text-dark border lesson-order-badge"><?= $i + 1 ?></span>
-                                        <strong class="text-truncate"><?= escapar($lesson['title']) ?></strong>
+                                        <div class="min-w-0 flex-grow-1">
+                                            <strong class="d-block text-truncate"><?= escapar($datosLeccion['titulo']) ?></strong>
+                                            <?php if ($datosLeccion['fecha'] !== ''): ?>
+                                                <span class="small text-muted"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
                                         <?php if ($mostrarProgresoEstudiante): ?>
                                             <span class="badge <?= $leccionCompletada ? 'bg-success' : 'bg-secondary' ?> ms-1 flex-shrink-0">
                                                 <?= $leccionCompletada ? '100%' : '0%' ?>
