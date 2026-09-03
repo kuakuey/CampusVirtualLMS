@@ -5,7 +5,7 @@
 <footer class="app-footer">
     <div class="container-fluid px-3 px-lg-4 py-3 d-flex flex-wrap justify-content-between gap-2">
         <span>&copy; <?= date('Y') ?> <?= escapar(NOMBRE_APP) ?> · Plataforma LMS</span>
-        <span class="text-muted">sistema web CDA</span>
+        <span class="text-muted">Campus Virtual</span>
     </div>
 </footer>
 <?php endif; ?>
