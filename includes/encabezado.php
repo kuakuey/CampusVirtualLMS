@@ -80,7 +80,7 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
                         <li>
                             <form method="post" action="<?= URL_APP ?>/toggle-vista.php" class="px-0">
                                 <?= campo_csrf() ?>
-                                <input type="hidden" name="volver" value="<?= escapar($_SERVER['REQUEST_URI']) ?>">
+                                <input type="hidden" name="volver" value="<?= escapar(ruta_relativa_actual()) ?>">
                                 <?php if (esta_en_vista_estudiante()): ?>
                                     <button type="submit" class="dropdown-item"><i class="bi bi-arrow-left-circle me-2"></i>Volver a vista de <?= escapar(etiqueta_rol($rolReal['role'])) ?></button>
                                 <?php else: ?>
@@ -110,7 +110,7 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
             </div>
             <form method="post" action="<?= URL_APP ?>/toggle-vista.php" class="d-inline">
                 <?= campo_csrf() ?>
-                <input type="hidden" name="volver" value="<?= escapar($_SERVER['REQUEST_URI']) ?>">
+                <input type="hidden" name="volver" value="<?= escapar(ruta_relativa_actual()) ?>">
                 <button type="submit" class="btn btn-sm btn-warning"><i class="bi bi-arrow-left-circle me-1"></i>Volver a <?= escapar(etiqueta_rol($rolReal['role'])) ?></button>
             </form>
         </div>

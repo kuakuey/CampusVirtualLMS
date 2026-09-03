@@ -6,10 +6,66 @@ function escapar(?string $valor): string
     return htmlspecialchars($valor ?? '', ENT_QUOTES, 'UTF-8');
 }
 
+function ruta_app_base(): string
+{
+    $ruta = parse_url(URL_APP, PHP_URL_PATH) ?: '';
+    return rtrim(str_replace('\\', '/', $ruta), '/');
+}
+
+function ruta_relativa_actual(): string
+{
+    $uri = $_SERVER['REQUEST_URI'] ?? '/panel.php';
+    $partes = parse_url($uri);
+    $path = $partes['path'] ?? '/panel.php';
+    $base = ruta_app_base();
+    if ($base !== '' && strpos($path, $base) === 0) {
+        $path = substr($path, strlen($base));
+    }
+    $path = ltrim($path, '/');
+    if ($path === '') {
+        $path = 'panel.php';
+    }
+    if (!empty($partes['query'])) {
+        $path .= '?' . $partes['query'];
+    }
+    return $path;
+}
+
+function url_interna_segura(string $ruta): string
+{
+    $ruta = trim($ruta);
+    if ($ruta === '') {
+        return URL_APP . '/panel.php';
+    }
+
+    if (preg_match('#^https?://#i', $ruta)) {
+        $destino = parse_url($ruta);
+        $base = parse_url(URL_APP);
+        $mismoHost = isset($destino['host'], $base['host'])
+            && strcasecmp($destino['host'], $base['host']) === 0;
+        if (!$mismoHost) {
+            return URL_APP . '/panel.php';
+        }
+        $ruta = ($destino['path'] ?? '/') . (isset($destino['query']) ? '?' . $destino['query'] : '');
+    }
+
+    $path = parse_url($ruta, PHP_URL_PATH) ?? $ruta;
+    $query = parse_url($ruta, PHP_URL_QUERY);
+    $base = ruta_app_base();
+    if ($base !== '' && (strpos($path, $base . '/') === 0 || $path === $base)) {
+        $path = substr($path, strlen($base));
+    }
+    $path = ltrim($path, '/');
+    if ($path === '') {
+        $path = 'panel.php';
+    }
+
+    return URL_APP . '/' . $path . ($query ? '?' . $query : '');
+}
+
 function redirigir(string $ruta): void
 {
-    $url = (strpos($ruta, 'http') === 0) ? $ruta : URL_APP . '/' . ltrim($ruta, '/');
-    header('Location: ' . $url);
+    header('Location: ' . url_interna_segura($ruta));
     exit;
 }
 

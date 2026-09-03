@@ -631,6 +631,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                                         <div class="min-w-0 flex-grow-1 d-flex align-items-center gap-2 flex-wrap">
                                             <strong class="text-truncate"><?= escapar($datosLeccion['titulo']) ?></strong>
                                             <?php if ($datosLeccion['fecha'] !== ''): ?>
+                                                <span class="text-muted flex-shrink-0">-</span>
                                                 <span class="small text-muted flex-shrink-0"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
                                             <?php endif; ?>
                                         </div>

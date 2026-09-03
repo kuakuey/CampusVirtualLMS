@@ -171,6 +171,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                                     <span class="text-muted me-1"><?= $i + 1 ?>.</span>
                                     <span class="text-truncate"><?= escapar($datosLeccion['titulo']) ?></span>
                                     <?php if ($datosLeccion['fecha'] !== ''): ?>
+                                        <span class="opacity-75 flex-shrink-0">-</span>
                                         <span class="small opacity-75 flex-shrink-0"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
                                     <?php endif; ?>
                                 </span>
@@ -196,6 +197,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                                 <span class="text-muted me-1"><?= $i + 1 ?>.</span>
                                 <span class="text-truncate"><?= escapar($datosLeccion['titulo']) ?></span>
                                 <?php if ($datosLeccion['fecha'] !== ''): ?>
+                                    <span class="opacity-75 flex-shrink-0">-</span>
                                     <span class="small opacity-75 flex-shrink-0"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
                                 <?php endif; ?>
                             </span>
