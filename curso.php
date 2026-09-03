@@ -436,6 +436,39 @@ require_once __DIR__ . '/includes/encabezado.php';
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if ($esPropietario): ?>
+        <div class="panel mt-4">
+            <div class="panel-body">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span class="fw-semibold">Inscripción:</span>
+                    <?= insignia_metodo_inscripcion($curso['enrollment_type'] ?? 'public') ?>
+                    <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= $id ?>" class="btn btn-sm btn-outline-primary">Configurar</a>
+                </div>
+                <?php if (($curso['enrollment_type'] ?? '') === 'url'): ?>
+                    <?php $urlInscripcion = url_inscripcion_curso($curso); ?>
+                    <label class="form-label small mb-1">Enlace de inscripción automática</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" value="<?= escapar($urlInscripcion) ?>" readonly id="url-inscripcion-curso">
+                        <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('url-inscripcion-curso').value)" title="Copiar"><i class="bi bi-clipboard"></i></button>
+                    </div>
+                <?php elseif (($curso['enrollment_type'] ?? '') === 'password'): ?>
+                    <p class="small text-muted mb-0">Los estudiantes ven el curso, pero deben ingresar la contraseña para inscribirse.</p>
+                <?php else: ?>
+                    <p class="small text-muted mb-0">Visible en el catálogo. Cualquier estudiante puede inscribirse.</p>
+                <?php endif; ?>
+                <?php if (!empty($curso['enrollment_deadline'])): ?>
+                    <p class="small text-muted mb-0 mt-2">
+                        <i class="bi bi-calendar-event me-1"></i>
+                        Inscripción disponible hasta el <?= formatear_fecha($curso['enrollment_deadline']) ?>
+                        <?php if (!inscripcion_abierta($curso)): ?>
+                            <span class="badge bg-secondary ms-1">Plazo vencido</span>
+                        <?php endif; ?>
+                    </p>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     <div class="col-12 course-hero-main">
         <div class="panel h-100">
@@ -494,39 +527,6 @@ require_once __DIR__ . '/includes/encabezado.php';
 <div class="panel mb-4">
     <div class="panel-body">
         <?= renderizar_vista_previa_documento($curso['document_path'], 'Material del curso') ?>
-    </div>
-</div>
-<?php endif; ?>
-
-<?php if ($esPropietario): ?>
-<div class="panel mb-4">
-    <div class="panel-body">
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-            <span class="fw-semibold">Inscripción:</span>
-            <?= insignia_metodo_inscripcion($curso['enrollment_type'] ?? 'public') ?>
-            <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= $id ?>" class="btn btn-sm btn-outline-primary ms-auto">Configurar</a>
-        </div>
-        <?php if (($curso['enrollment_type'] ?? '') === 'url'): ?>
-            <?php $urlInscripcion = url_inscripcion_curso($curso); ?>
-            <label class="form-label small mb-1">Enlace de inscripción automática</label>
-            <div class="input-group input-group-sm">
-                <input type="text" class="form-control" value="<?= escapar($urlInscripcion) ?>" readonly id="url-inscripcion-curso">
-                <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('url-inscripcion-curso').value)"><i class="bi bi-clipboard"></i> Copiar</button>
-            </div>
-        <?php elseif (($curso['enrollment_type'] ?? '') === 'password'): ?>
-            <p class="small text-muted mb-0">Los estudiantes ven el curso, pero deben ingresar la contraseña para inscribirse.</p>
-        <?php else: ?>
-            <p class="small text-muted mb-0">Visible en el catálogo. Cualquier estudiante puede inscribirse.</p>
-        <?php endif; ?>
-        <?php if (!empty($curso['enrollment_deadline'])): ?>
-            <p class="small text-muted mb-0 mt-2">
-                <i class="bi bi-calendar-event me-1"></i>
-                Inscripción disponible hasta el <?= formatear_fecha($curso['enrollment_deadline']) ?>
-                <?php if (!inscripcion_abierta($curso)): ?>
-                    <span class="badge bg-secondary ms-1">Plazo vencido</span>
-                <?php endif; ?>
-            </p>
-        <?php endif; ?>
     </div>
 </div>
 <?php endif; ?>
