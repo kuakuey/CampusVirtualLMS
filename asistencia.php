@@ -8,7 +8,7 @@ if (!asegurar_tabla_asistencias()) {
 }
 
 $usuario = usuario_actual();
-$esGestor = in_array($usuario['role'], ['admin', 'teacher'], true);
+$esGestor = in_array($usuario['role'], ['admin', 'gestor', 'teacher'], true);
 
 if ($esGestor) {
     $idCurso = (int) ($_GET['curso'] ?? 0);

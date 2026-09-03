@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirigir(url_asistencia_curso($id, ['fecha' => $fechaGuardar]));
     }
 
-    if ($accion === 'eliminar_asistencia' && $esPropietario) {
+    if ($accion === 'eliminar_asistencia' && $esPropietario && puede_eliminar_curso($curso, $usuario)) {
         $fechaBorrar = fecha_asistencia_valida($_POST['fecha'] ?? '');
         if (!$fechaBorrar) {
             mensaje_flash('danger', 'La fecha de asistencia no es válida.');

@@ -11,7 +11,8 @@ if (!$curso) {
     redirigir('cursos.php');
 }
 
-$esPropietario = $usuario['role'] === 'admin' || ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']);
+$esPropietario = es_propietario_curso($curso, $usuario);
+$puedeEliminar = puede_eliminar_curso($curso, $usuario);
 $esDocenteAsignado = $esPropietario || ($usuario['role'] === 'teacher' && es_docente_modulo_curso($id, (int) $usuario['id']));
 $matriculado = esta_matriculado($id);
 $vistaPrevia = !$esDocenteAsignado && !$matriculado && $usuario['role'] === 'student' && $curso['status'] === 'published';
@@ -136,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirigir("curso.php?id=$id&pestaña=lecciones&modulo=$idSubcurso");
     }
 
-    if ($accion === 'eliminar_subcurso' && $esPropietario) {
+    if ($accion === 'eliminar_subcurso' && $puedeEliminar) {
         $idSubcurso = (int) ($_POST['subcourse_id'] ?? 0);
         if (obtener_subcurso($idSubcurso, $id)) {
             $consulta = bd()->prepare('SELECT attachment FROM lessons WHERE subcourse_id = ? AND attachment IS NOT NULL AND attachment != ""');
@@ -151,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirigir("curso.php?id=$id&pestaña=lecciones");
     }
 
-    if ($accion === 'eliminar_leccion' && $esPropietario) {
+    if ($accion === 'eliminar_leccion' && $puedeEliminar) {
         $lessonId = (int) ($_POST['lesson_id'] ?? 0);
         $consulta = bd()->prepare('SELECT attachment FROM lessons WHERE id = ? AND course_id = ?');
         $consulta->execute([$lessonId, $id]);
@@ -178,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirigir("curso.php?id=$id&pestaña=tareas");
     }
 
-    if ($accion === 'eliminar_tarea' && $esPropietario) {
+    if ($accion === 'eliminar_tarea' && $puedeEliminar) {
         $aid = (int) ($_POST['assignment_id'] ?? 0);
         $stmt = bd()->prepare('DELETE FROM assignments WHERE id = ? AND course_id = ?');
         $stmt->execute([$aid, $id]);
@@ -259,13 +260,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($accion === 'retirar_estudiante' && $esPropietario) {
         $idEstudiante = (int) ($_POST['id_estudiante'] ?? 0);
-        $consulta = bd()->prepare('UPDATE enrollments SET status = "dropped" WHERE course_id = ? AND student_id = ?');
+        $consulta = bd()->prepare('DELETE FROM enrollments WHERE course_id = ? AND student_id = ?');
         $consulta->execute([$id, $idEstudiante]);
         mensaje_flash('success', 'Estudiante retirado del curso.');
         redirigir("curso.php?id=$id&pestaña=estudiantes");
     }
 
-    if ($accion === 'eliminar_curso' && $esPropietario) {
+    if ($accion === 'eliminar_curso' && $puedeEliminar) {
         limpiar_archivos_curso($id);
         $stmt = bd()->prepare('DELETE FROM courses WHERE id = ?');
         $stmt->execute([$id]);
@@ -379,7 +380,7 @@ if ($esDocenteAsignado) {
     $stmt = bd()->prepare(
         'SELECT e.*, u.name, u.email FROM enrollments e
          JOIN users u ON u.id = e.student_id
-         WHERE e.course_id = ? ORDER BY e.enrolled_at DESC'
+         WHERE e.course_id = ? AND e.status = "active" ORDER BY e.enrolled_at DESC'
     );
     $stmt->execute([$id]);
     $estudiantes = $stmt->fetchAll();
@@ -408,11 +409,13 @@ require_once __DIR__ . '/includes/encabezado.php';
             <div class="d-flex gap-2 flex-wrap flex-shrink-0">
                 <?php if ($esPropietario): ?>
                     <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= $id ?>" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
+                    <?php if ($puedeEliminar): ?>
                     <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este curso y todo su contenido?');">
                         <?= campo_csrf() ?>
                         <input type="hidden" name="accion" value="eliminar_curso">
                         <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash me-1"></i> Eliminar</button>
                     </form>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <a href="<?= URL_APP ?>/<?= $vistaPrevia ? 'catalogo.php' : 'cursos.php' ?>" class="btn btn-outline-secondary">Volver</a>
             </div>
@@ -595,12 +598,14 @@ require_once __DIR__ . '/includes/encabezado.php';
                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditarModulo">
                             <i class="bi bi-pencil me-1"></i> Editar módulo
                         </button>
+                        <?php if ($puedeEliminar): ?>
                         <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este módulo y todas sus lecciones?');">
                             <?= campo_csrf() ?>
                             <input type="hidden" name="accion" value="eliminar_subcurso">
                             <input type="hidden" name="subcourse_id" value="<?= (int) $subcursoActivo['id'] ?>">
                             <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash me-1"></i> Eliminar módulo</button>
                         </form>
+                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
 
@@ -657,12 +662,14 @@ require_once __DIR__ . '/includes/encabezado.php';
                                         <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-primary">Ver</a>
                                         <?php if ($esPropietario): ?>
                                         <a href="<?= URL_APP ?>/leccion-formulario.php?id=<?= (int) $lesson['id'] ?>" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+                                        <?php if ($puedeEliminar): ?>
                                         <form method="post" onsubmit="return confirm('¿Eliminar lección?');">
                                             <?= campo_csrf() ?>
                                             <input type="hidden" name="accion" value="eliminar_leccion">
                                             <input type="hidden" name="lesson_id" value="<?= (int) $lesson['id'] ?>">
                                             <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
                                         </form>
+                                        <?php endif; ?>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -842,7 +849,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                                         <?php if ($asg['due_date']): ?> · Vence <?= formatear_fecha($asg['due_date'], true) ?><?php endif; ?>
                                     </div>
                                 </div>
-                                <?php if ($esPropietario): ?>
+                                <?php if ($esPropietario && $puedeEliminar): ?>
                                 <form method="post" onsubmit="return confirm('¿Eliminar tarea?');">
                                     <?= campo_csrf() ?>
                                     <input type="hidden" name="accion" value="eliminar_tarea">

@@ -9,7 +9,7 @@ $stats = [];
 $cursosRecientes = [];
 $pendientes = [];
 
-if ($usuario['role'] === 'admin') {
+if ($usuario['role'] === 'admin' || $usuario['role'] === 'gestor') {
     $stats = [
         ['label' => 'Usuarios', 'value' => contar_consulta('SELECT COUNT(*) FROM users'), 'icon' => 'bi-people', 'class' => 'icon-navy'],
         ['label' => 'Cursos', 'value' => contar_consulta('SELECT COUNT(*) FROM courses'), 'icon' => 'bi-journal-bookmark', 'class' => 'icon-teal'],
@@ -105,7 +105,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <p class="subtitle">Resumen de tu actividad en <?= escapar(NOMBRE_APP) ?></p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <?php if (in_array($usuario['role'], ['admin', 'teacher'], true)): ?>
+        <?php if (in_array($usuario['role'], ['admin', 'gestor', 'teacher'], true)): ?>
             <a href="<?= URL_APP ?>/curso-formulario.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo curso</a>
         <?php endif; ?>
     </div>

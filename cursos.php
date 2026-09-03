@@ -11,10 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'elimi
     verificar_csrf();
     $idCurso = (int) ($_POST['id_curso'] ?? 0);
     $cursoEliminar = $idCurso ? obtener_curso($idCurso) : null;
-    $puedeEliminar = $cursoEliminar && (
-        $usuario['role'] === 'admin'
-        || ($usuario['role'] === 'teacher' && (int) $cursoEliminar['teacher_id'] === (int) $usuario['id'])
-    );
+    $puedeEliminar = $cursoEliminar && puede_eliminar_curso($cursoEliminar, $usuario);
     if ($puedeEliminar) {
         limpiar_archivos_curso($idCurso);
         $consulta = bd()->prepare('DELETE FROM courses WHERE id = ?');
@@ -75,7 +72,7 @@ require_once __DIR__ . '/includes/encabezado.php';
         <p class="subtitle"><?= count($cursos) ?> curso(s) encontrado(s)</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <?php if (in_array($usuario['role'], ['admin', 'teacher'], true)): ?>
+        <?php if (in_array($usuario['role'], ['admin', 'gestor', 'teacher'], true)): ?>
             <a href="<?= URL_APP ?>/curso-formulario.php" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nuevo curso</a>
         <?php endif; ?>
     </div>
@@ -112,7 +109,8 @@ require_once __DIR__ . '/includes/encabezado.php';
 <?php else: ?>
 <div class="row g-3">
     <?php foreach ($cursos as $curso): ?>
-    <?php $esPropietario = $usuario['role'] === 'admin' || ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']); ?>
+    <?php $esPropietario = es_propietario_curso($curso, $usuario); ?>
+    <?php $puedeEliminar = puede_eliminar_curso($curso, $usuario); ?>
     <div class="col-md-6 col-xl-4">
         <div class="course-card">
             <div class="course-banner">
@@ -135,12 +133,14 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <a href="<?= URL_APP ?>/curso.php?id=<?= (int) $curso['id'] ?>" class="btn btn-primary flex-fill">Abrir</a>
                     <?php if ($esPropietario): ?>
                         <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= (int) $curso['id'] ?>" class="btn btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+                        <?php if ($puedeEliminar): ?>
                         <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este curso y todo su contenido?');">
                             <?= campo_csrf() ?>
                             <input type="hidden" name="accion" value="eliminar_curso">
                             <input type="hidden" name="id_curso" value="<?= (int) $curso['id'] ?>">
                             <button class="btn btn-outline-danger" type="submit" title="Eliminar"><i class="bi bi-trash"></i></button>
                         </form>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>

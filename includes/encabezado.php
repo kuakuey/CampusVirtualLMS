@@ -52,7 +52,7 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
                         <i class="bi bi-person me-1"></i> Perfil
                     </a>
                 </li>
-                <?php if ($usuario['role'] === 'admin'): ?>
+                <?php if (es_admin_o_gestor($usuario)): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle <?= in_array($paginaActual, ['usuarios.php','categorias.php'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">
                         <i class="bi bi-gear me-1"></i> Administración
@@ -76,7 +76,7 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <?php $rolReal = usuario_real(); ?>
-                        <?php if ($rolReal && in_array($rolReal['role'], ['admin', 'teacher'], true)): ?>
+                        <?php if ($rolReal && puede_cambiar_vista($rolReal)): ?>
                         <li>
                             <form method="post" action="<?= URL_APP ?>/toggle-vista.php" class="px-0">
                                 <?= campo_csrf() ?>

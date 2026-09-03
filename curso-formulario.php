@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/funciones.php';
 requiere_sesion();
-requiere_rol(['admin', 'teacher']);
+requiere_rol(['admin', 'gestor', 'teacher']);
 
 $usuario = usuario_actual();
 $id = (int) ($_GET['id'] ?? 0);

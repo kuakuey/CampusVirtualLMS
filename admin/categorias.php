@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/funciones.php';
 requiere_sesion();
-requiere_rol('admin');
+requiere_rol(['admin', 'gestor']);
 
 $tituloPagina = 'Categorías';
 
@@ -33,6 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'delete') {
+        if (!puede_eliminar()) {
+            mensaje_flash('danger', 'No tienes permiso para eliminar categorías.');
+            redirigir('admin/categorias.php');
+        }
         $cid = (int) ($_POST['category_id'] ?? 0);
         $stmt = bd()->prepare('DELETE FROM categories WHERE id = ?');
         $stmt->execute([$cid]);
@@ -104,12 +108,14 @@ require_once __DIR__ . '/../includes/encabezado.php';
                                     <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#edit<?= (int) $cat['id'] ?>">
                                         <i class="bi bi-pencil"></i>
                                     </button>
+                                    <?php if (puede_eliminar()): ?>
                                     <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar categoría?');">
                                         <?= campo_csrf() ?>
                                         <input type="hidden" name="accion" value="delete">
                                         <input type="hidden" name="category_id" value="<?= (int) $cat['id'] ?>">
                                         <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
                                     </form>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
 

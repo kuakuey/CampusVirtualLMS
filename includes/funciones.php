@@ -92,7 +92,7 @@ function esta_logueado(): bool
 function usuario_actual(): ?array
 {
     $usuario = $_SESSION['usuario'] ?? null;
-    if ($usuario && !empty($_SESSION['vista_estudiante']) && in_array($usuario['role'], ['admin', 'teacher'], true)) {
+    if ($usuario && !empty($_SESSION['vista_estudiante']) && puede_cambiar_vista($usuario)) {
         $copia = $usuario;
         $copia['role'] = 'student';
         $copia['_rol_real'] = $usuario['role'];
@@ -109,7 +109,7 @@ function usuario_real(): ?array
 function esta_en_vista_estudiante(): bool
 {
     $usuario = $_SESSION['usuario'] ?? null;
-    return $usuario && !empty($_SESSION['vista_estudiante']) && in_array($usuario['role'], ['admin', 'teacher'], true);
+    return $usuario && !empty($_SESSION['vista_estudiante']) && puede_cambiar_vista($usuario);
 }
 
 function activar_vista_estudiante(): void
@@ -146,6 +146,7 @@ function etiqueta_rol(string $rol): string
 {
     switch ($rol) {
         case 'admin': return 'Administrador';
+        case 'gestor': return 'Gestor';
         case 'teacher': return 'Docente';
         case 'student': return 'Estudiante';
         default: return $rol;
@@ -156,11 +157,52 @@ function insignia_rol(string $rol): string
 {
     switch ($rol) {
         case 'admin': $clase = 'bg-danger'; break;
+        case 'gestor': $clase = 'bg-warning text-dark'; break;
         case 'teacher': $clase = 'bg-primary'; break;
         case 'student': $clase = 'bg-success'; break;
         default: $clase = 'bg-secondary';
     }
     return '<span class="badge ' . $clase . '">' . escapar(etiqueta_rol($rol)) . '</span>';
+}
+
+function roles_sistema(): array
+{
+    return ['admin', 'gestor', 'teacher', 'student'];
+}
+
+function es_admin(?array $usuario = null): bool
+{
+    $usuario = $usuario ?? usuario_actual();
+    return ($usuario['role'] ?? '') === 'admin';
+}
+
+function es_admin_o_gestor(?array $usuario = null): bool
+{
+    $usuario = $usuario ?? usuario_actual();
+    return in_array($usuario['role'] ?? '', ['admin', 'gestor'], true);
+}
+
+function puede_cambiar_vista(?array $usuario = null): bool
+{
+    $usuario = $usuario ?? usuario_real();
+    return in_array($usuario['role'] ?? '', ['admin', 'gestor', 'teacher'], true);
+}
+
+function puede_eliminar(?array $usuario = null): bool
+{
+    return es_admin($usuario);
+}
+
+function puede_eliminar_curso(array $curso, ?array $usuario = null): bool
+{
+    $usuario = $usuario ?? usuario_actual();
+    if (!$usuario) {
+        return false;
+    }
+    if (es_admin($usuario)) {
+        return true;
+    }
+    return ($usuario['role'] ?? '') === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id'];
 }
 
 function insignia_estado(string $estado): string
@@ -236,7 +278,7 @@ function puede_acceder_curso(array $curso): bool
     if (!$usuario) {
         return false;
     }
-    if ($usuario['role'] === 'admin') {
+    if (es_admin_o_gestor($usuario)) {
         return true;
     }
     if ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']) {
@@ -392,7 +434,7 @@ function es_propietario_curso(array $curso, ?array $usuario = null): bool
     if (!$usuario) {
         return false;
     }
-    return $usuario['role'] === 'admin'
+    return es_admin_o_gestor($usuario)
         || ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']);
 }
 
@@ -937,7 +979,7 @@ function puede_gestionar_asistencia(array $curso, ?array $usuario = null): bool
 
 function cursos_para_asistencia(array $usuario): array
 {
-    if ($usuario['role'] === 'admin') {
+    if (es_admin_o_gestor($usuario)) {
         $consulta = bd()->query('SELECT id, title, code FROM courses ORDER BY title');
         return $consulta->fetchAll();
     }

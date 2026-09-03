@@ -3,7 +3,7 @@ require_once __DIR__ . '/includes/funciones.php';
 requiere_sesion();
 
 $real = usuario_real();
-if (!$real || !in_array($real['role'], ['admin', 'teacher'], true)) {
+if (!$real || !puede_cambiar_vista($real)) {
     mensaje_flash('danger', 'No tienes permiso para cambiar de vista.');
     redirigir('panel.php');
 }

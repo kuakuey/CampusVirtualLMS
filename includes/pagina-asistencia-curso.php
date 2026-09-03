@@ -111,7 +111,7 @@
             </div>
         </form>
             <div class="panel-body border-top d-flex justify-content-between flex-wrap gap-2">
-                <?php if ($yaRegistrada): ?>
+                <?php if ($yaRegistrada && $puedeEliminar): ?>
                 <form method="post" action="<?= escapar(url_asistencia_curso($id)) ?>" onsubmit="return confirm('¿Eliminar el listado del <?= escapar(formatear_fecha($fecha)) ?>? Esta acción no se puede deshacer.');">
                     <?= campo_csrf() ?>
                     <input type="hidden" name="accion" value="eliminar_asistencia">
@@ -203,6 +203,7 @@
                                     <a class="btn btn-sm btn-outline-primary" href="<?= escapar(url_asistencia_curso($id, ['vista' => 'tomar', 'fecha' => $fila['attendance_date']])) ?>">
                                         Ver lista
                                     </a>
+                                    <?php if ($puedeEliminar): ?>
                                     <form method="post" action="<?= escapar(url_asistencia_curso($id, ['vista' => 'reportes'])) ?>" class="d-inline" onsubmit="return confirm('¿Eliminar el listado del <?= escapar(formatear_fecha($fila['attendance_date'])) ?>? Esta acción no se puede deshacer.');">
                                         <?= campo_csrf() ?>
                                         <input type="hidden" name="accion" value="eliminar_asistencia">
@@ -210,6 +211,7 @@
                                         <input type="hidden" name="volver_a" value="reportes">
                                         <button class="btn btn-sm btn-outline-danger" type="submit">Borrar</button>
                                     </form>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>

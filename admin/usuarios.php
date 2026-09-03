@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/funciones.php';
 requiere_sesion();
-requiere_rol('admin');
+requiere_rol(['admin', 'gestor']);
 
 $tituloPagina = 'Usuarios';
 $buscar = trim($_GET['buscar'] ?? '');
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($accion === 'cambiar_rol') {
         $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
         $nuevoRol = $_POST['nuevo_rol'] ?? '';
-        if ($idUsuario !== (int) usuario_actual()['id'] && in_array($nuevoRol, ['admin', 'teacher', 'student'], true)) {
+        if ($idUsuario !== (int) usuario_actual()['id'] && in_array($nuevoRol, roles_sistema(), true)) {
             $consulta = bd()->prepare('UPDATE users SET role = ? WHERE id = ?');
             $consulta->execute([$nuevoRol, $idUsuario]);
             mensaje_flash('success', 'Rol actualizado.');
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $correo = trim($_POST['correo'] ?? '');
         $clave = $_POST['clave'] ?? '';
         $nuevoRol = $_POST['nuevo_rol'] ?? 'student';
-        if ($nombre && filter_var($correo, FILTER_VALIDATE_EMAIL) && strlen($clave) >= 6 && in_array($nuevoRol, ['admin', 'teacher', 'student'], true)) {
+        if ($nombre && filter_var($correo, FILTER_VALIDATE_EMAIL) && strlen($clave) >= 6 && in_array($nuevoRol, roles_sistema(), true)) {
             $verificar = bd()->prepare('SELECT id FROM users WHERE email = ?');
             $verificar->execute([$correo]);
             if ($verificar->fetch()) {
@@ -56,6 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($accion === 'eliminar_usuario') {
+        if (!puede_eliminar()) {
+            mensaje_flash('danger', 'No tienes permiso para eliminar usuarios.');
+            redirigir('admin/usuarios.php');
+        }
         $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
         if ($idUsuario !== (int) usuario_actual()['id']) {
             $consultaAvatar = bd()->prepare('SELECT avatar FROM users WHERE id = ?');
@@ -79,7 +83,7 @@ if ($buscar !== '') {
     $parametros[] = $like;
     $parametros[] = $like;
 }
-if ($role !== '' && in_array($role, ['admin', 'teacher', 'student'], true)) {
+if ($role !== '' && in_array($role, roles_sistema(), true)) {
     $sql .= ' AND role = ?';
     $parametros[] = $role;
 }
@@ -111,6 +115,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
                 <select name="role" class="form-select">
                     <option value="">Todos los roles</option>
                     <option value="admin" <?= $role === 'admin' ? 'selected' : '' ?>>Administrador</option>
+                    <option value="gestor" <?= $role === 'gestor' ? 'selected' : '' ?>>Gestor</option>
                     <option value="teacher" <?= $role === 'teacher' ? 'selected' : '' ?>>Docente</option>
                     <option value="student" <?= $role === 'student' ? 'selected' : '' ?>>Estudiante</option>
                 </select>
@@ -157,6 +162,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
                                     <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
                                     <select name="nuevo_rol" class="form-select form-select-sm" onchange="this.form.submit()">
                                         <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
+                                        <option value="gestor" <?= $u['role'] === 'gestor' ? 'selected' : '' ?>>Gestor</option>
                                         <option value="teacher" <?= $u['role'] === 'teacher' ? 'selected' : '' ?>>Docente</option>
                                         <option value="student" <?= $u['role'] === 'student' ? 'selected' : '' ?>>Estudiante</option>
                                     </select>
@@ -177,12 +183,14 @@ require_once __DIR__ . '/../includes/encabezado.php';
                                 <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
                                 <button class="btn btn-sm btn-outline-secondary" type="submit"><?= $u['status'] ? 'Desactivar' : 'Activar' ?></button>
                             </form>
+                            <?php if (puede_eliminar()): ?>
                             <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar usuario?');">
                                 <?= campo_csrf() ?>
                                 <input type="hidden" name="accion" value="eliminar_usuario">
                                 <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
                                 <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
                             </form>
+                            <?php endif; ?>
                             <?php else: ?>
                                 <span class="text-muted small">Tú</span>
                             <?php endif; ?>
@@ -222,6 +230,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
                     <select name="nuevo_rol" class="form-select">
                         <option value="student">Estudiante</option>
                         <option value="teacher">Docente</option>
+                        <option value="gestor">Gestor</option>
                         <option value="admin">Administrador</option>
                     </select>
                 </div>
