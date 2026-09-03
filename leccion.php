@@ -167,11 +167,11 @@ require_once __DIR__ . '/includes/encabezado.php';
                             ?>
                             <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $sib['id'] ?>"
                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
-                                <span class="min-w-0">
+                                <span class="min-w-0 d-flex align-items-center gap-2 flex-wrap">
                                     <span class="text-muted me-1"><?= $i + 1 ?>.</span>
-                                    <span class="d-block text-truncate"><?= escapar($datosLeccion['titulo']) ?></span>
+                                    <span class="text-truncate"><?= escapar($datosLeccion['titulo']) ?></span>
                                     <?php if ($datosLeccion['fecha'] !== ''): ?>
-                                        <span class="small opacity-75"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
+                                        <span class="small opacity-75 flex-shrink-0"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
                                     <?php endif; ?>
                                 </span>
                                 <?php if ($mostrarProgreso): ?>
@@ -192,11 +192,11 @@ require_once __DIR__ . '/includes/encabezado.php';
                         ?>
                         <a href="<?= URL_APP ?>/leccion.php?id=<?= (int) $sib['id'] ?>"
                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center <?= (int) $sib['id'] === $id ? 'active' : '' ?>">
-                            <span class="min-w-0">
+                            <span class="min-w-0 d-flex align-items-center gap-2 flex-wrap">
                                 <span class="text-muted me-1"><?= $i + 1 ?>.</span>
-                                <span class="d-block text-truncate"><?= escapar($datosLeccion['titulo']) ?></span>
+                                <span class="text-truncate"><?= escapar($datosLeccion['titulo']) ?></span>
                                 <?php if ($datosLeccion['fecha'] !== ''): ?>
-                                    <span class="small opacity-75"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
+                                    <span class="small opacity-75 flex-shrink-0"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
                                 <?php endif; ?>
                             </span>
                             <?php if ($mostrarProgreso): ?>

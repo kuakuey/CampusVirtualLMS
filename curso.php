@@ -628,10 +628,10 @@ require_once __DIR__ . '/includes/encabezado.php';
                                         <span class="lesson-drag-handle" title="Arrastrar para reordenar"><i class="bi bi-grip-vertical"></i></span>
                                         <?php endif; ?>
                                         <span class="badge bg-light text-dark border lesson-order-badge"><?= $i + 1 ?></span>
-                                        <div class="min-w-0 flex-grow-1">
-                                            <strong class="d-block text-truncate"><?= escapar($datosLeccion['titulo']) ?></strong>
+                                        <div class="min-w-0 flex-grow-1 d-flex align-items-center gap-2 flex-wrap">
+                                            <strong class="text-truncate"><?= escapar($datosLeccion['titulo']) ?></strong>
                                             <?php if ($datosLeccion['fecha'] !== ''): ?>
-                                                <span class="small text-muted"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
+                                                <span class="small text-muted flex-shrink-0"><i class="bi bi-calendar-event me-1"></i><?= escapar($datosLeccion['fecha']) ?></span>
                                             <?php endif; ?>
                                         </div>
                                         <?php if ($mostrarProgresoEstudiante): ?>
