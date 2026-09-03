@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'elimi
 }
 
 $sql = 'SELECT c.*, u.name AS teacher_name, cat.name AS category_name,
-               (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students,
+               (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id AND e.status = "active") AS students,
                (SELECT COUNT(*) FROM lessons l WHERE l.course_id = c.id) AS lessons_count
         FROM courses c
         LEFT JOIN users u ON u.id = c.teacher_id

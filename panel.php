@@ -13,12 +13,12 @@ if ($usuario['role'] === 'admin' || $usuario['role'] === 'gestor') {
     $stats = [
         ['label' => 'Usuarios', 'value' => contar_consulta('SELECT COUNT(*) FROM users'), 'icon' => 'bi-people', 'class' => 'icon-navy'],
         ['label' => 'Cursos', 'value' => contar_consulta('SELECT COUNT(*) FROM courses'), 'icon' => 'bi-journal-bookmark', 'class' => 'icon-teal'],
-        ['label' => 'Matrículas', 'value' => contar_consulta('SELECT COUNT(*) FROM enrollments'), 'icon' => 'bi-person-check', 'class' => 'icon-amber'],
+        ['label' => 'Matrículas', 'value' => contar_consulta('SELECT COUNT(*) FROM enrollments WHERE status = "active"'), 'icon' => 'bi-person-check', 'class' => 'icon-amber'],
         ['label' => 'Docentes', 'value' => contar_consulta('SELECT COUNT(*) FROM users WHERE role = "teacher"'), 'icon' => 'bi-person-workspace', 'class' => 'icon-rose'],
     ];
     $stmt = bd()->query(
         'SELECT c.*, u.name AS teacher_name, cat.name AS category_name,
-                (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students
+                (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id AND e.status = "active") AS students
          FROM courses c
          JOIN users u ON u.id = c.teacher_id
          LEFT JOIN categories cat ON cat.id = c.category_id
@@ -30,13 +30,13 @@ if ($usuario['role'] === 'admin' || $usuario['role'] === 'gestor') {
     $tid = $usuario['id'];
     $stats = [
         ['label' => 'Mis cursos', 'value' => contar_consulta('SELECT COUNT(*) FROM courses WHERE teacher_id = ?', [$tid]), 'icon' => 'bi-journal-bookmark', 'class' => 'icon-teal'],
-        ['label' => 'Estudiantes', 'value' => contar_consulta('SELECT COUNT(DISTINCT e.student_id) FROM enrollments e JOIN courses c ON c.id = e.course_id WHERE c.teacher_id = ?', [$tid]), 'icon' => 'bi-people', 'class' => 'icon-navy'],
+        ['label' => 'Estudiantes', 'value' => contar_consulta('SELECT COUNT(DISTINCT e.student_id) FROM enrollments e JOIN courses c ON c.id = e.course_id WHERE c.teacher_id = ? AND e.status = "active"', [$tid]), 'icon' => 'bi-people', 'class' => 'icon-navy'],
         ['label' => 'Tareas', 'value' => contar_consulta('SELECT COUNT(*) FROM assignments a JOIN courses c ON c.id = a.course_id WHERE c.teacher_id = ?', [$tid]), 'icon' => 'bi-clipboard-check', 'class' => 'icon-amber'],
         ['label' => 'Por calificar', 'value' => contar_consulta('SELECT COUNT(*) FROM submissions s JOIN assignments a ON a.id = s.assignment_id JOIN courses c ON c.id = a.course_id LEFT JOIN grades g ON g.submission_id = s.id WHERE c.teacher_id = ? AND g.id IS NULL', [$tid]), 'icon' => 'bi-pencil-square', 'class' => 'icon-rose'],
     ];
     $stmt = bd()->prepare(
         'SELECT c.*, cat.name AS category_name,
-                (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS students
+                (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id AND e.status = "active") AS students
          FROM courses c
          LEFT JOIN categories cat ON cat.id = c.category_id
          WHERE c.teacher_id = ? AND c.status NOT IN ("draft", "archived")

@@ -396,58 +396,60 @@ $tituloPagina = $curso['title'];
 require_once __DIR__ . '/includes/encabezado.php';
 ?>
 
-<div class="panel mb-4 course-intro-panel">
-    <div class="panel-body">
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
-            <div class="flex-grow-1 min-w-0">
+<div class="row g-4 mb-4 course-hero align-items-stretch">
+    <div class="col-12 course-hero-side">
+        <div class="panel h-100 course-intro-panel">
+            <div class="panel-body">
                 <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
                     <span class="badge text-bg-light border"><?= escapar($curso['code']) ?></span>
                     <?php if ($curso['category_name']): ?><span class="badge bg-secondary"><?= escapar($curso['category_name']) ?></span><?php endif; ?>
                 </div>
-                <h1 class="h2 mb-2"><?= escapar($curso['title']) ?></h1>
-            </div>
-            <div class="d-flex gap-2 flex-wrap flex-shrink-0">
-                <?php if ($esPropietario): ?>
-                    <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= $id ?>" class="btn btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
-                    <?php if ($puedeEliminar): ?>
-                    <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este curso y todo su contenido?');">
-                        <?= campo_csrf() ?>
-                        <input type="hidden" name="accion" value="eliminar_curso">
-                        <button class="btn btn-outline-danger" type="submit"><i class="bi bi-trash me-1"></i> Eliminar</button>
-                    </form>
+                <h1 class="h4 mb-3"><?= escapar($curso['title']) ?></h1>
+
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    <?php if ($esPropietario): ?>
+                        <a href="<?= URL_APP ?>/curso-formulario.php?id=<?= $id ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i> Editar</a>
+                        <?php if ($puedeEliminar): ?>
+                        <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar este curso y todo su contenido?');">
+                            <?= campo_csrf() ?>
+                            <input type="hidden" name="accion" value="eliminar_curso">
+                            <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash me-1"></i> Eliminar</button>
+                        </form>
+                        <?php endif; ?>
                     <?php endif; ?>
+                    <a href="<?= URL_APP ?>/<?= $vistaPrevia ? 'catalogo.php' : 'cursos.php' ?>" class="btn btn-sm btn-outline-secondary">Volver</a>
+                </div>
+
+                <?php if ($mostrarProgresoEstudiante && $lecciones): ?>
+                <div class="course-progress-block">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <span class="fw-semibold"><i class="bi bi-graph-up me-1"></i> Tu progreso</span>
+                        <span class="badge bg-success"><?= $progresoCurso ?>%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" style="width: <?= $progresoCurso ?>%"></div>
+                    </div>
+                    <p class="small text-muted mb-0 mt-2">
+                        <?= count($idsLeccionesCompletadas) ?> de <?= count($lecciones) ?> lecciones completadas.
+                    </p>
+                </div>
                 <?php endif; ?>
-                <a href="<?= URL_APP ?>/<?= $vistaPrevia ? 'catalogo.php' : 'cursos.php' ?>" class="btn btn-outline-secondary">Volver</a>
             </div>
         </div>
-
-        <?php if ($mostrarProgresoEstudiante && $lecciones): ?>
-        <hr class="my-3">
-        <div class="course-progress-block">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                <span class="fw-semibold"><i class="bi bi-graph-up me-1"></i> Tu progreso en el curso</span>
-                <span class="badge bg-success fs-6"><?= $progresoCurso ?>%</span>
+    </div>
+    <div class="col-12 course-hero-main">
+        <div class="panel h-100">
+            <div class="panel-header"><h2 class="mb-0">Descripción</h2></div>
+            <div class="panel-body content-html">
+                <?php if (trim($curso['description'] ?? '') !== ''): ?>
+                    <?= $curso['description'] ?>
+                <?php else: ?>
+                    <p class="text-muted mb-0">Este curso aún no tiene una descripción larga.</p>
+                <?php endif; ?>
             </div>
-            <div class="progress" style="height: 10px;">
-                <div class="progress-bar bg-success" style="width: <?= $progresoCurso ?>%"></div>
-            </div>
-            <p class="small text-muted mb-0 mt-2">
-                <?= count($idsLeccionesCompletadas) ?> de <?= count($lecciones) ?> lecciones completadas.
-                Debes ver cada video al menos 10 minutos para marcarla como completada.
-            </p>
         </div>
-        <?php endif; ?>
     </div>
 </div>
-
-<?php if (trim($curso['description'] ?? '') !== ''): ?>
-<div class="panel mb-4">
-    <div class="panel-header"><h2 class="mb-0">Descripción</h2></div>
-    <div class="panel-body content-html">
-        <?= $curso['description'] ?>
-    </div>
-</div>
-<?php endif; ?>
 
 <?php if ($vistaPrevia): ?>
 <?php $tipoInscripcion = $curso['enrollment_type'] ?? 'public'; ?>
