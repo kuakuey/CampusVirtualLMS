@@ -28,7 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $content = trim($_POST['content'] ?? '');
     $video = trim($_POST['video_url'] ?? '');
+    $lessonDate = trim($_POST['lesson_date'] ?? '');
     $idSubcurso = (int) ($_POST['subcourse_id'] ?? 0);
+    if ($lessonDate !== '' && strtotime($lessonDate)) {
+        $lessonDate = date('Y-m-d', strtotime($lessonDate));
+    } else {
+        $lessonDate = null;
+    }
 
     if ($title === '') {
         $errors[] = 'El título es obligatorio.';
@@ -62,15 +68,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $order = obtener_siguiente_orden_leccion($idSubcurso);
         }
         $consulta = bd()->prepare(
-            'UPDATE lessons SET subcourse_id=?, title=?, content=?, video_url=?, sort_order=?, attachment=? WHERE id=? AND course_id=?'
+            'UPDATE lessons SET subcourse_id=?, title=?, lesson_date=?, content=?, video_url=?, sort_order=?, attachment=? WHERE id=? AND course_id=?'
         );
-        $consulta->execute([$idSubcurso, $title, $content, $video ?: null, $order, $adjunto, $id, $idCurso]);
+        $consulta->execute([$idSubcurso, $title, $lessonDate, $content, $video ?: null, $order, $adjunto, $id, $idCurso]);
         mensaje_flash('success', 'Lección actualizada.');
         redirigir('leccion.php?id=' . $id);
     }
 
     $leccion = array_merge($leccion, [
         'title' => $title,
+        'lesson_date' => $lessonDate,
         'content' => $content,
         'video_url' => $video,
         'subcourse_id' => $idSubcurso,
@@ -101,9 +108,15 @@ require_once __DIR__ . '/includes/encabezado.php';
         <?php endif; ?>
         <form method="post" enctype="multipart/form-data">
             <?= campo_csrf() ?>
-            <div class="mb-3">
-                <label class="form-label">Título</label>
-                <input type="text" name="title" class="form-control" value="<?= escapar($leccion['title']) ?>" required>
+            <div class="row g-3 mb-3">
+                <div class="col-md-8">
+                    <label class="form-label">Título</label>
+                    <input type="text" name="title" class="form-control" value="<?= escapar($leccion['title']) ?>" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Fecha de la sesión</label>
+                    <input type="date" name="lesson_date" class="form-control" value="<?= escapar($leccion['lesson_date'] ?? '') ?>">
+                </div>
             </div>
             <?php if ($mostrarSelectorSubcurso): ?>
             <div class="mb-3">

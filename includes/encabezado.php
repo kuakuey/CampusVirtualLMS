@@ -75,6 +75,21 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
                         </span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
+                        <?php $rolReal = usuario_real(); ?>
+                        <?php if ($rolReal && in_array($rolReal['role'], ['admin', 'teacher'], true)): ?>
+                        <li>
+                            <form method="post" action="<?= URL_APP ?>/toggle-vista.php" class="px-0">
+                                <?= campo_csrf() ?>
+                                <input type="hidden" name="volver" value="<?= escapar($_SERVER['REQUEST_URI']) ?>">
+                                <?php if (esta_en_vista_estudiante()): ?>
+                                    <button type="submit" class="dropdown-item"><i class="bi bi-arrow-left-circle me-2"></i>Volver a vista de <?= escapar(etiqueta_rol($rolReal['role'])) ?></button>
+                                <?php else: ?>
+                                    <button type="submit" class="dropdown-item"><i class="bi bi-eye me-2"></i>Ver como Estudiante</button>
+                                <?php endif; ?>
+                            </form>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <?php endif; ?>
                         <li><a class="dropdown-item text-danger" href="<?= URL_CERRAR_SESION ?>"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</a></li>
                     </ul>
                 </div>
@@ -86,6 +101,20 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
 
 <main class="<?= $usuario ? 'app-main' : '' ?>">
     <div class="<?= $usuario ? 'container-fluid px-3 px-lg-4 py-4' : '' ?>">
+        <?php if (esta_en_vista_estudiante()): ?>
+        <?php $rolReal = $rolReal ?? usuario_real(); ?>
+        <div class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-sm mb-3" role="alert">
+            <div>
+                <i class="bi bi-eye-fill me-1"></i>
+                <strong>Vista de Estudiante</strong> — Estás viendo el sistema como lo ve un estudiante.
+            </div>
+            <form method="post" action="<?= URL_APP ?>/toggle-vista.php" class="d-inline">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="volver" value="<?= escapar($_SERVER['REQUEST_URI']) ?>">
+                <button type="submit" class="btn btn-sm btn-warning"><i class="bi bi-arrow-left-circle me-1"></i>Volver a <?= escapar(etiqueta_rol($rolReal['role'])) ?></button>
+            </form>
+        </div>
+        <?php endif; ?>
         <?php if ($mensaje): ?>
         <div class="alert alert-<?= escapar($mensaje['tipo']) ?> alert-dismissible fade show shadow-sm" role="alert">
             <?= escapar($mensaje['mensaje']) ?>

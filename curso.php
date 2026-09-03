@@ -84,15 +84,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim($_POST['title'] ?? '');
         $content = trim($_POST['content'] ?? '');
         $video = trim($_POST['video_url'] ?? '');
+        $lessonDate = trim($_POST['lesson_date'] ?? '');
         $idSubcurso = (int) ($_POST['subcourse_id'] ?? 0);
+        if ($lessonDate !== '' && strtotime($lessonDate)) {
+            $lessonDate = date('Y-m-d', strtotime($lessonDate));
+            $title = $title . ' ' . date('d/m/Y', strtotime($lessonDate));
+        } else {
+            $lessonDate = null;
+        }
         if ($title !== '') {
             if ($idSubcurso <= 0 || !obtener_subcurso($idSubcurso, $id)) {
                 $idSubcurso = asegurar_subcurso_default($id);
             }
             $order = obtener_siguiente_orden_leccion($idSubcurso);
             $adjunto = !empty($_FILES['documento']['name']) ? subir_archivo($_FILES['documento'], 'lecciones') : null;
-            $stmt = bd()->prepare('INSERT INTO lessons (course_id, subcourse_id, title, content, video_url, sort_order, attachment) VALUES (?,?,?,?,?,?,?)');
-            $stmt->execute([$id, $idSubcurso, $title, $content, $video ?: null, $order, $adjunto]);
+            $stmt = bd()->prepare('INSERT INTO lessons (course_id, subcourse_id, title, lesson_date, content, video_url, sort_order, attachment) VALUES (?,?,?,?,?,?,?,?)');
+            $stmt->execute([$id, $idSubcurso, $title, $lessonDate, $content, $video ?: null, $order, $adjunto]);
             mensaje_flash('success', 'Lección creada.');
         }
         $redirectModulo = $idSubcurso > 0 ? "&modulo=$idSubcurso" : '';
@@ -764,9 +771,15 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?php elseif ($subcursos): ?>
                         <input type="hidden" name="subcourse_id" value="<?= (int) $subcursos[0]['id'] ?>">
                     <?php endif; ?>
-                    <div class="mb-3">
-                        <label class="form-label">Título</label>
-                        <input type="text" name="title" class="form-control" required>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Título</label>
+                            <input type="text" name="title" class="form-control" required id="nuevo-leccion-titulo">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fecha de la sesión</label>
+                            <input type="date" name="lesson_date" class="form-control" id="nuevo-leccion-fecha">
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Contenido (HTML permitido)</label>

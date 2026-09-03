@@ -35,7 +35,35 @@ function esta_logueado(): bool
 
 function usuario_actual(): ?array
 {
+    $usuario = $_SESSION['usuario'] ?? null;
+    if ($usuario && !empty($_SESSION['vista_estudiante']) && in_array($usuario['role'], ['admin', 'teacher'], true)) {
+        $copia = $usuario;
+        $copia['role'] = 'student';
+        $copia['_rol_real'] = $usuario['role'];
+        return $copia;
+    }
+    return $usuario;
+}
+
+function usuario_real(): ?array
+{
     return $_SESSION['usuario'] ?? null;
+}
+
+function esta_en_vista_estudiante(): bool
+{
+    $usuario = $_SESSION['usuario'] ?? null;
+    return $usuario && !empty($_SESSION['vista_estudiante']) && in_array($usuario['role'], ['admin', 'teacher'], true);
+}
+
+function activar_vista_estudiante(): void
+{
+    $_SESSION['vista_estudiante'] = true;
+}
+
+function desactivar_vista_estudiante(): void
+{
+    unset($_SESSION['vista_estudiante']);
 }
 
 function requiere_sesion(): void
@@ -50,7 +78,9 @@ function requiere_rol($roles): void
 {
     requiere_sesion();
     $roles = (array) $roles;
-    if (!in_array(usuario_actual()['role'], $roles, true)) {
+    $usuario = usuario_actual();
+    $real = usuario_real();
+    if (!in_array($usuario['role'], $roles, true) && !in_array($real['role'], $roles, true)) {
         mensaje_flash('danger', 'No tienes permiso para acceder a esta sección.');
         redirigir('panel.php');
     }
