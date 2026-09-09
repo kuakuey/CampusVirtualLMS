@@ -336,7 +336,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
 
 <?php if ($puedeEditarUsuarios): ?>
 <div class="modal fade" id="createUserModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <form method="post" class="modal-content">
             <?= campo_csrf() ?>
             <input type="hidden" name="accion" value="crear_usuario">
@@ -382,7 +382,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
 
 <?php if ($puedeEditarUsuarios): ?>
 <div class="modal fade" id="editUserModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <form method="post" class="modal-content">
             <?= campo_csrf() ?>
             <input type="hidden" name="accion" value="editar_usuario">
