@@ -13,31 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificar_csrf();
     $accion = $_POST['accion'] ?? '';
 
-    if (!$puedeEditarUsuarios && in_array($accion, ['cambiar_estado', 'cambiar_rol', 'crear_usuario', 'clave_temporal', 'editar_usuario'], true)) {
-        mensaje_flash('danger', 'Solo un administrador puede editar usuarios.');
-        redirigir('admin/usuarios.php');
-    }
-
-    if ($accion === 'cambiar_estado') {
-        $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
-        if ($idUsuario !== (int) usuario_actual()['id']) {
-            $consulta = bd()->prepare('UPDATE users SET status = IF(status=1,0,1) WHERE id = ?');
-            $consulta->execute([$idUsuario]);
-            mensaje_flash('success', 'Estado del usuario actualizado.');
-        } else {
-            mensaje_flash('warning', 'No puedes desactivar tu propia cuenta.');
-        }
-        redirigir('admin/usuarios.php');
-    }
-
-    if ($accion === 'cambiar_rol') {
-        $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
-        $nuevoRol = $_POST['nuevo_rol'] ?? '';
-        if ($idUsuario !== (int) usuario_actual()['id'] && in_array($nuevoRol, roles_sistema(), true)) {
-            $consulta = bd()->prepare('UPDATE users SET role = ? WHERE id = ?');
-            $consulta->execute([$nuevoRol, $idUsuario]);
-            mensaje_flash('success', 'Rol actualizado.');
-        }
+    if (!$puedeEditarUsuarios && in_array($accion, ['crear_usuario'], true)) {
+        mensaje_flash('danger', 'Solo un administrador puede crear usuarios.');
         redirigir('admin/usuarios.php');
     }
 
@@ -60,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $consulta = bd()->prepare('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)');
                     $consulta->execute([$nombre, $correo, password_hash($clave, PASSWORD_DEFAULT), $nuevoRol]);
                 }
+                $idNuevo = (int) bd()->lastInsertId();
                 if ($usarTemporal) {
                     $_SESSION['clave_temporal_mostrada'] = [
                         'nombre' => $nombre,
@@ -70,72 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     mensaje_flash('success', 'Usuario creado.');
                 }
+                if ($idNuevo > 0) {
+                    redirigir('admin/usuario.php?id=' . $idNuevo);
+                }
             }
         } else {
             mensaje_flash('danger', 'Datos inválidos para crear usuario.');
-        }
-        redirigir('admin/usuarios.php');
-    }
-
-    if ($accion === 'editar_usuario') {
-        $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
-        $nombre = trim($_POST['nombre'] ?? '');
-        $correo = trim($_POST['correo'] ?? '');
-        $bio = trim($_POST['bio'] ?? '');
-        $nuevoRol = $_POST['nuevo_rol'] ?? '';
-        $estado = (int) ($_POST['estado'] ?? 1) === 1 ? 1 : 0;
-        $esPropio = $idUsuario === (int) usuario_actual()['id'];
-
-        $consulta = bd()->prepare('SELECT id, role, status FROM users WHERE id = ? LIMIT 1');
-        $consulta->execute([$idUsuario]);
-        $destino = $consulta->fetch();
-
-        if (!$destino || $nombre === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-            mensaje_flash('danger', 'Datos inválidos para actualizar el usuario.');
-            redirigir('admin/usuarios.php');
-        }
-
-        $duplicado = bd()->prepare('SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1');
-        $duplicado->execute([$correo, $idUsuario]);
-        if ($duplicado->fetch()) {
-            mensaje_flash('danger', 'El correo ya está en uso por otro usuario.');
-            redirigir('admin/usuarios.php');
-        }
-
-        if ($esPropio) {
-            $nuevoRol = $destino['role'];
-            $estado = (int) $destino['status'];
-        } elseif (!in_array($nuevoRol, roles_sistema(), true)) {
-            mensaje_flash('danger', 'El rol seleccionado no es válido.');
-            redirigir('admin/usuarios.php');
-        }
-
-        $actualizar = bd()->prepare('UPDATE users SET name = ?, email = ?, bio = ?, role = ?, status = ? WHERE id = ?');
-        $actualizar->execute([$nombre, $correo, $bio !== '' ? $bio : null, $nuevoRol, $estado, $idUsuario]);
-        sincronizar_sesion_usuario($idUsuario);
-        mensaje_flash('success', 'Información del usuario actualizada.');
-        redirigir('admin/usuarios.php');
-    }
-
-    if ($accion === 'clave_temporal') {
-        $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
-        if ($idUsuario === (int) usuario_actual()['id']) {
-            mensaje_flash('warning', 'No puedes generar una contraseña temporal para tu propia cuenta.');
-            redirigir('admin/usuarios.php');
-        }
-        $consulta = bd()->prepare('SELECT id, name, email FROM users WHERE id = ? LIMIT 1');
-        $consulta->execute([$idUsuario]);
-        $destino = $consulta->fetch();
-        $clave = $destino ? asignar_contrasena_temporal($idUsuario) : null;
-        if ($clave && $destino) {
-            $_SESSION['clave_temporal_mostrada'] = [
-                'nombre' => $destino['name'],
-                'email' => $destino['email'],
-                'clave' => $clave,
-            ];
-            mensaje_flash('success', 'Contraseña temporal creada. Entrégasela al usuario; al entrar deberá definir una nueva.');
-        } else {
-            mensaje_flash('danger', 'No se pudo crear la contraseña temporal. Actualiza las tablas en instalación.');
         }
         redirigir('admin/usuarios.php');
     }
@@ -176,8 +94,6 @@ $sql .= ' ORDER BY created_at DESC';
 $consulta = bd()->prepare($sql);
 $consulta->execute($parametros);
 $usuarios = $consulta->fetchAll();
-$claveTemporal = $_SESSION['clave_temporal_mostrada'] ?? null;
-unset($_SESSION['clave_temporal_mostrada']);
 
 require_once __DIR__ . '/../includes/encabezado.php';
 ?>
@@ -193,18 +109,6 @@ require_once __DIR__ . '/../includes/encabezado.php';
     </button>
     <?php endif; ?>
 </div>
-
-<?php if ($claveTemporal): ?>
-<div class="alert alert-info shadow-sm">
-    <div class="fw-semibold mb-1">Contraseña temporal para <?= escapar($claveTemporal['nombre']) ?></div>
-    <div class="small mb-2"><?= escapar($claveTemporal['email']) ?></div>
-    <div class="input-group" style="max-width: 360px;">
-        <input type="text" class="form-control fw-semibold" id="clave-temporal-generada" value="<?= escapar($claveTemporal['clave']) ?>" readonly>
-        <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('clave-temporal-generada').value)"><i class="bi bi-clipboard"></i> Copiar</button>
-    </div>
-    <div class="small mt-2 mb-0">Al iniciar sesión con esta clave, el usuario irá a crear su contraseña definitiva y luego entrará al campus.</div>
-</div>
-<?php endif; ?>
 
 <div class="panel mb-4">
     <div class="panel-body">
@@ -243,6 +147,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
                 </thead>
                 <tbody>
                     <?php foreach ($usuarios as $u): ?>
+                    <?php $esPropio = (int) $u['id'] === (int) usuario_actual()['id']; ?>
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-2">
@@ -256,23 +161,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
                                 </div>
                             </div>
                         </td>
-                        <td>
-                            <?php if ($puedeEditarUsuarios && (int) $u['id'] !== (int) usuario_actual()['id']): ?>
-                                <form method="post" class="d-flex gap-1">
-                                    <?= campo_csrf() ?>
-                                    <input type="hidden" name="accion" value="cambiar_rol">
-                                    <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
-                                    <select name="nuevo_rol" class="form-select form-select-sm" onchange="this.form.submit()">
-                                        <option value="admin" <?= $u['role'] === 'admin' ? 'selected' : '' ?>>Admin</option>
-                                        <option value="gestor" <?= $u['role'] === 'gestor' ? 'selected' : '' ?>>Gestor</option>
-                                        <option value="teacher" <?= $u['role'] === 'teacher' ? 'selected' : '' ?>>Docente</option>
-                                        <option value="student" <?= $u['role'] === 'student' ? 'selected' : '' ?>>Estudiante</option>
-                                    </select>
-                                </form>
-                            <?php else: ?>
-                                <?= insignia_rol($u['role']) ?>
-                            <?php endif; ?>
-                        </td>
+                        <td><?= insignia_rol($u['role']) ?></td>
                         <td>
                             <span class="badge <?= $u['status'] ? 'bg-success' : 'bg-secondary' ?>">
                                 <?= $u['status'] ? 'Activo' : 'Inactivo' ?>
@@ -283,47 +172,17 @@ require_once __DIR__ . '/../includes/encabezado.php';
                             <?php if (!$puedeEditarUsuarios): ?>
                                 <span class="text-muted small">—</span>
                             <?php else: ?>
-                            <?php $esPropio = (int) $u['id'] === (int) usuario_actual()['id']; ?>
-                            <button type="button"
-                                class="btn btn-sm btn-outline-primary"
-                                title="Editar información"
-                                data-bs-toggle="modal"
-                                data-bs-target="#editUserModal"
-                                data-id="<?= (int) $u['id'] ?>"
-                                data-nombre="<?= escapar($u['name']) ?>"
-                                data-correo="<?= escapar($u['email']) ?>"
-                                data-bio="<?= escapar($u['bio'] ?? '') ?>"
-                                data-rol="<?= escapar($u['role']) ?>"
-                                data-estado="<?= (int) $u['status'] ?>"
-                                data-propio="<?= $esPropio ? '1' : '0' ?>">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <?php if (!$esPropio): ?>
-                            <form method="post" class="d-inline">
-                                <?= campo_csrf() ?>
-                                <input type="hidden" name="accion" value="clave_temporal">
-                                <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
-                                <button class="btn btn-sm btn-outline-primary" type="submit" title="Crear contraseña temporal" onclick="return confirm('¿Generar una contraseña temporal? El usuario deberá crear una nueva al entrar.');">
-                                    <i class="bi bi-key"></i>
-                                </button>
-                            </form>
-                            <form method="post" class="d-inline">
-                                <?= campo_csrf() ?>
-                                <input type="hidden" name="accion" value="cambiar_estado">
-                                <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
-                                <button class="btn btn-sm btn-outline-secondary" type="submit"><?= $u['status'] ? 'Desactivar' : 'Activar' ?></button>
-                            </form>
-                            <?php if (puede_eliminar()): ?>
-                            <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar usuario?');">
-                                <?= campo_csrf() ?>
-                                <input type="hidden" name="accion" value="eliminar_usuario">
-                                <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
-                                <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-trash"></i></button>
-                            </form>
-                            <?php endif; ?>
-                            <?php else: ?>
-                                <span class="text-muted small ms-1">Tú</span>
-                            <?php endif; ?>
+                                <a class="btn btn-sm btn-outline-primary" href="<?= URL_USUARIO ?>?id=<?= (int) $u['id'] ?>" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <?php if (!$esPropio && puede_eliminar()): ?>
+                                <form method="post" class="d-inline" onsubmit="return confirm('¿Eliminar usuario?');">
+                                    <?= campo_csrf() ?>
+                                    <input type="hidden" name="accion" value="eliminar_usuario">
+                                    <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -378,92 +237,18 @@ require_once __DIR__ . '/../includes/encabezado.php';
         </form>
     </div>
 </div>
-<?php endif; ?>
-
-<?php if ($puedeEditarUsuarios): ?>
-<div class="modal fade" id="editUserModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <form method="post" class="modal-content">
-            <?= campo_csrf() ?>
-            <input type="hidden" name="accion" value="editar_usuario">
-            <input type="hidden" name="id_usuario" id="editar-id-usuario" value="">
-            <div class="modal-header">
-                <h5 class="modal-title">Editar usuario</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label" for="editar-nombre">Nombre</label>
-                    <input type="text" name="nombre" id="editar-nombre" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="editar-correo">Correo</label>
-                    <input type="email" name="correo" id="editar-correo" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="editar-bio">Biografía</label>
-                    <textarea name="bio" id="editar-bio" class="form-control" rows="3"></textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="editar-rol">Rol</label>
-                    <select name="nuevo_rol" id="editar-rol" class="form-select">
-                        <option value="student">Estudiante</option>
-                        <option value="teacher">Docente</option>
-                        <option value="gestor">Gestor</option>
-                        <option value="admin">Administrador</option>
-                    </select>
-                    <div class="form-text" id="editar-rol-ayuda" hidden>No puedes cambiar tu propio rol.</div>
-                </div>
-                <div class="mb-0">
-                    <label class="form-label" for="editar-estado">Estado</label>
-                    <select name="estado" id="editar-estado" class="form-select">
-                        <option value="1">Activo</option>
-                        <option value="0">Inactivo</option>
-                    </select>
-                    <div class="form-text" id="editar-estado-ayuda" hidden>No puedes desactivar tu propia cuenta.</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Guardar cambios</button>
-            </div>
-        </form>
-    </div>
-</div>
-<?php endif; ?>
-
-<?php if ($puedeEditarUsuarios): ?>
 <script>
 (function () {
     const check = document.getElementById('usar-clave-temporal');
     const clave = document.getElementById('clave-nuevo-usuario');
-    if (check && clave) {
-        function sync() {
-            clave.required = !check.checked;
-            clave.disabled = check.checked;
-            if (check.checked) clave.value = '';
-        }
-        check.addEventListener('change', sync);
-        sync();
+    if (!check || !clave) return;
+    function sync() {
+        clave.required = !check.checked;
+        clave.disabled = check.checked;
+        if (check.checked) clave.value = '';
     }
-
-    const modal = document.getElementById('editUserModal');
-    if (!modal) return;
-    modal.addEventListener('show.bs.modal', function (evento) {
-        const boton = evento.relatedTarget;
-        if (!boton) return;
-        const propio = boton.getAttribute('data-propio') === '1';
-        document.getElementById('editar-id-usuario').value = boton.getAttribute('data-id') || '';
-        document.getElementById('editar-nombre').value = boton.getAttribute('data-nombre') || '';
-        document.getElementById('editar-correo').value = boton.getAttribute('data-correo') || '';
-        document.getElementById('editar-bio').value = boton.getAttribute('data-bio') || '';
-        document.getElementById('editar-rol').value = boton.getAttribute('data-rol') || 'student';
-        document.getElementById('editar-estado').value = boton.getAttribute('data-estado') || '1';
-        document.getElementById('editar-rol').disabled = propio;
-        document.getElementById('editar-estado').disabled = propio;
-        document.getElementById('editar-rol-ayuda').hidden = !propio;
-        document.getElementById('editar-estado-ayuda').hidden = !propio;
-    });
+    check.addEventListener('change', sync);
+    sync();
 })();
 </script>
 <?php endif; ?>

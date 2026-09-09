@@ -55,7 +55,7 @@ $soloCambioClave = $paginaActual === 'cambiar-contrasena.php' && usuario_debe_ca
                 </li>
                 <?php if (es_admin_o_gestor($usuario)): ?>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?= in_array($paginaActual, ['usuarios.php','categorias.php'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle <?= in_array($paginaActual, ['usuarios.php','usuario.php','categorias.php'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">
                         <i class="bi bi-gear me-1"></i> Administración
                     </a>
                     <ul class="dropdown-menu">

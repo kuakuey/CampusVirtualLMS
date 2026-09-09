@@ -87,6 +87,7 @@ $rutasApp = [
     'URL_CURSO_ASISTENCIA' => '/curso.php',
     'URL_ASISTENCIA' => '/asistencia.php',
     'URL_USUARIOS' => '/admin/usuarios.php',
+    'URL_USUARIO' => '/admin/usuario.php',
     'URL_CATEGORIAS' => '/admin/categorias.php',
 ];
 foreach ($rutasApp as $nombre => $ruta) {
