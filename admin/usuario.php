@@ -81,7 +81,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'email' => $ficha['email'],
                 'clave' => $clave,
             ];
-            mensaje_flash('success', 'Contraseña temporal creada. Entrégasela al usuario; al entrar deberá definir una nueva.');
         } else {
             mensaje_flash('danger', 'No se pudo crear la contraseña temporal. Actualiza las tablas en instalación.');
         }
@@ -105,18 +104,6 @@ require_once __DIR__ . '/../includes/encabezado.php';
 
 <?php if ($errors): ?>
     <div class="alert alert-danger"><ul class="mb-0 ps-3"><?php foreach ($errors as $err): ?><li><?= escapar($err) ?></li><?php endforeach; ?></ul></div>
-<?php endif; ?>
-
-<?php if ($claveTemporal): ?>
-<div class="alert alert-info shadow-sm">
-    <div class="fw-semibold mb-1">Contraseña temporal para <?= escapar($claveTemporal['nombre']) ?></div>
-    <div class="small mb-2"><?= escapar($claveTemporal['email']) ?></div>
-    <div class="input-group" style="max-width: 360px;">
-        <input type="text" class="form-control fw-semibold" id="clave-temporal-generada" value="<?= escapar($claveTemporal['clave']) ?>" readonly>
-        <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('clave-temporal-generada').value)"><i class="bi bi-clipboard"></i> Copiar</button>
-    </div>
-    <div class="small mt-2 mb-0">Al iniciar sesión con esta clave, el usuario irá a crear su contraseña definitiva y luego entrará al campus.</div>
-</div>
 <?php endif; ?>
 
 <div class="row g-4">
@@ -191,12 +178,22 @@ require_once __DIR__ . '/../includes/encabezado.php';
             <div class="panel-header"><h2>Contraseña temporal</h2></div>
             <div class="panel-body">
                 <p class="text-muted small">Genera una clave temporal. El usuario deberá crear una nueva al iniciar sesión y luego entrará al campus.</p>
+                <?php if ($claveTemporal): ?>
+                <div class="mb-3">
+                    <label class="form-label" for="clave-temporal-generada">Contraseña generada</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control fw-semibold" id="clave-temporal-generada" value="<?= escapar($claveTemporal['clave']) ?>" readonly>
+                        <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('clave-temporal-generada').value)"><i class="bi bi-clipboard"></i> Copiar</button>
+                    </div>
+                    <div class="form-text">Cópiala ahora; no se volverá a mostrar.</div>
+                </div>
+                <?php endif; ?>
                 <form method="post" onsubmit="return confirm('¿Generar una contraseña temporal? El usuario deberá crear una nueva al entrar.');">
                     <?= campo_csrf() ?>
                     <input type="hidden" name="accion" value="clave_temporal">
                     <input type="hidden" name="id_usuario" value="<?= (int) $ficha['id'] ?>">
                     <button class="btn btn-outline-primary" type="submit">
-                        <i class="bi bi-key me-1"></i> Generar contraseña temporal
+                        <i class="bi bi-key me-1"></i> <?= $claveTemporal ? 'Generar otra contraseña temporal' : 'Generar contraseña temporal' ?>
                     </button>
                 </form>
             </div>
