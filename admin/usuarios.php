@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificar_csrf();
     $accion = $_POST['accion'] ?? '';
 
-    if (!$puedeEditarUsuarios && in_array($accion, ['cambiar_estado', 'cambiar_rol', 'crear_usuario', 'clave_temporal'], true)) {
+    if (!$puedeEditarUsuarios && in_array($accion, ['cambiar_estado', 'cambiar_rol', 'crear_usuario', 'clave_temporal', 'editar_usuario'], true)) {
         mensaje_flash('danger', 'Solo un administrador puede editar usuarios.');
         redirigir('admin/usuarios.php');
     }
@@ -74,6 +74,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             mensaje_flash('danger', 'Datos inválidos para crear usuario.');
         }
+        redirigir('admin/usuarios.php');
+    }
+
+    if ($accion === 'editar_usuario') {
+        $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
+        $nombre = trim($_POST['nombre'] ?? '');
+        $correo = trim($_POST['correo'] ?? '');
+        $bio = trim($_POST['bio'] ?? '');
+        $nuevoRol = $_POST['nuevo_rol'] ?? '';
+        $estado = (int) ($_POST['estado'] ?? 1) === 1 ? 1 : 0;
+        $esPropio = $idUsuario === (int) usuario_actual()['id'];
+
+        $consulta = bd()->prepare('SELECT id, role, status FROM users WHERE id = ? LIMIT 1');
+        $consulta->execute([$idUsuario]);
+        $destino = $consulta->fetch();
+
+        if (!$destino || $nombre === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            mensaje_flash('danger', 'Datos inválidos para actualizar el usuario.');
+            redirigir('admin/usuarios.php');
+        }
+
+        $duplicado = bd()->prepare('SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1');
+        $duplicado->execute([$correo, $idUsuario]);
+        if ($duplicado->fetch()) {
+            mensaje_flash('danger', 'El correo ya está en uso por otro usuario.');
+            redirigir('admin/usuarios.php');
+        }
+
+        if ($esPropio) {
+            $nuevoRol = $destino['role'];
+            $estado = (int) $destino['status'];
+        } elseif (!in_array($nuevoRol, roles_sistema(), true)) {
+            mensaje_flash('danger', 'El rol seleccionado no es válido.');
+            redirigir('admin/usuarios.php');
+        }
+
+        $actualizar = bd()->prepare('UPDATE users SET name = ?, email = ?, bio = ?, role = ?, status = ? WHERE id = ?');
+        $actualizar->execute([$nombre, $correo, $bio !== '' ? $bio : null, $nuevoRol, $estado, $idUsuario]);
+        sincronizar_sesion_usuario($idUsuario);
+        mensaje_flash('success', 'Información del usuario actualizada.');
         redirigir('admin/usuarios.php');
     }
 
@@ -242,7 +282,23 @@ require_once __DIR__ . '/../includes/encabezado.php';
                         <td class="text-end">
                             <?php if (!$puedeEditarUsuarios): ?>
                                 <span class="text-muted small">—</span>
-                            <?php elseif ((int) $u['id'] !== (int) usuario_actual()['id']): ?>
+                            <?php else: ?>
+                            <?php $esPropio = (int) $u['id'] === (int) usuario_actual()['id']; ?>
+                            <button type="button"
+                                class="btn btn-sm btn-outline-primary"
+                                title="Editar información"
+                                data-bs-toggle="modal"
+                                data-bs-target="#editUserModal"
+                                data-id="<?= (int) $u['id'] ?>"
+                                data-nombre="<?= escapar($u['name']) ?>"
+                                data-correo="<?= escapar($u['email']) ?>"
+                                data-bio="<?= escapar($u['bio'] ?? '') ?>"
+                                data-rol="<?= escapar($u['role']) ?>"
+                                data-estado="<?= (int) $u['status'] ?>"
+                                data-propio="<?= $esPropio ? '1' : '0' ?>">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <?php if (!$esPropio): ?>
                             <form method="post" class="d-inline">
                                 <?= campo_csrf() ?>
                                 <input type="hidden" name="accion" value="clave_temporal">
@@ -266,7 +322,8 @@ require_once __DIR__ . '/../includes/encabezado.php';
                             </form>
                             <?php endif; ?>
                             <?php else: ?>
-                                <span class="text-muted small">Tú</span>
+                                <span class="text-muted small ms-1">Tú</span>
+                            <?php endif; ?>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -324,18 +381,89 @@ require_once __DIR__ . '/../includes/encabezado.php';
 <?php endif; ?>
 
 <?php if ($puedeEditarUsuarios): ?>
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            <?= campo_csrf() ?>
+            <input type="hidden" name="accion" value="editar_usuario">
+            <input type="hidden" name="id_usuario" id="editar-id-usuario" value="">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label" for="editar-nombre">Nombre</label>
+                    <input type="text" name="nombre" id="editar-nombre" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="editar-correo">Correo</label>
+                    <input type="email" name="correo" id="editar-correo" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="editar-bio">Biografía</label>
+                    <textarea name="bio" id="editar-bio" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="editar-rol">Rol</label>
+                    <select name="nuevo_rol" id="editar-rol" class="form-select">
+                        <option value="student">Estudiante</option>
+                        <option value="teacher">Docente</option>
+                        <option value="gestor">Gestor</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                    <div class="form-text" id="editar-rol-ayuda" hidden>No puedes cambiar tu propio rol.</div>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label" for="editar-estado">Estado</label>
+                    <select name="estado" id="editar-estado" class="form-select">
+                        <option value="1">Activo</option>
+                        <option value="0">Inactivo</option>
+                    </select>
+                    <div class="form-text" id="editar-estado-ayuda" hidden>No puedes desactivar tu propia cuenta.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($puedeEditarUsuarios): ?>
 <script>
 (function () {
     const check = document.getElementById('usar-clave-temporal');
     const clave = document.getElementById('clave-nuevo-usuario');
-    if (!check || !clave) return;
-    function sync() {
-        clave.required = !check.checked;
-        clave.disabled = check.checked;
-        if (check.checked) clave.value = '';
+    if (check && clave) {
+        function sync() {
+            clave.required = !check.checked;
+            clave.disabled = check.checked;
+            if (check.checked) clave.value = '';
+        }
+        check.addEventListener('change', sync);
+        sync();
     }
-    check.addEventListener('change', sync);
-    sync();
+
+    const modal = document.getElementById('editUserModal');
+    if (!modal) return;
+    modal.addEventListener('show.bs.modal', function (evento) {
+        const boton = evento.relatedTarget;
+        if (!boton) return;
+        const propio = boton.getAttribute('data-propio') === '1';
+        document.getElementById('editar-id-usuario').value = boton.getAttribute('data-id') || '';
+        document.getElementById('editar-nombre').value = boton.getAttribute('data-nombre') || '';
+        document.getElementById('editar-correo').value = boton.getAttribute('data-correo') || '';
+        document.getElementById('editar-bio').value = boton.getAttribute('data-bio') || '';
+        document.getElementById('editar-rol').value = boton.getAttribute('data-rol') || 'student';
+        document.getElementById('editar-estado').value = boton.getAttribute('data-estado') || '1';
+        document.getElementById('editar-rol').disabled = propio;
+        document.getElementById('editar-estado').disabled = propio;
+        document.getElementById('editar-rol-ayuda').hidden = !propio;
+        document.getElementById('editar-estado-ayuda').hidden = !propio;
+    });
 })();
 </script>
 <?php endif; ?>
