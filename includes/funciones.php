@@ -128,6 +128,60 @@ function requiere_sesion(): void
         mensaje_flash('warning', 'Debes iniciar sesión para continuar.');
         redirigir('iniciar-sesion.php');
     }
+    $pagina = basename($_SERVER['PHP_SELF'] ?? '');
+    if (usuario_debe_cambiar_clave() && $pagina !== 'cambiar-contrasena.php') {
+        redirigir('cambiar-contrasena.php');
+    }
+}
+
+function puede_editar_usuarios(?array $usuario = null): bool
+{
+    return es_admin($usuario ?? usuario_real());
+}
+
+function usuario_debe_cambiar_clave(?array $usuario = null): bool
+{
+    $usuario = $usuario ?? usuario_real();
+    if (!$usuario) {
+        return false;
+    }
+    if (array_key_exists('must_change_password', $usuario)) {
+        return !empty($usuario['must_change_password']);
+    }
+    try {
+        $consulta = bd()->prepare('SELECT must_change_password FROM users WHERE id = ? LIMIT 1');
+        $consulta->execute([(int) $usuario['id']]);
+        return (bool) $consulta->fetchColumn();
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+function generar_contrasena_temporal(int $longitud = 8): string
+{
+    $caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    $max = strlen($caracteres) - 1;
+    $clave = '';
+    for ($i = 0; $i < $longitud; $i++) {
+        $clave .= $caracteres[random_int(0, $max)];
+    }
+    return $clave;
+}
+
+function asignar_contrasena_temporal(int $idUsuario): ?string
+{
+    if ($idUsuario < 1) {
+        return null;
+    }
+    $clave = generar_contrasena_temporal();
+    try {
+        $consulta = bd()->prepare('UPDATE users SET password = ?, must_change_password = 1 WHERE id = ?');
+        $consulta->execute([password_hash($clave, PASSWORD_DEFAULT), $idUsuario]);
+        return $clave;
+    } catch (PDOException $e) {
+        error_log('No se pudo asignar contraseña temporal: ' . $e->getMessage());
+        return null;
+    }
 }
 
 function requiere_rol($roles): void
@@ -1291,6 +1345,13 @@ function sincronizar_sesion_usuario(int $idUsuario): void
     $stmt->execute([$idUsuario]);
     $usuario = $stmt->fetch();
     if ($usuario) {
+        try {
+            $flag = bd()->prepare('SELECT must_change_password FROM users WHERE id = ? LIMIT 1');
+            $flag->execute([$idUsuario]);
+            $usuario['must_change_password'] = (int) $flag->fetchColumn();
+        } catch (PDOException $e) {
+            $usuario['must_change_password'] = 0;
+        }
         $_SESSION['usuario'] = $usuario;
     }
 }

@@ -2,7 +2,7 @@
 require_once __DIR__ . '/includes/funciones.php';
 
 if (esta_logueado()) {
-    redirigir('panel.php');
+    redirigir(usuario_debe_cambiar_clave() ? 'cambiar-contrasena.php' : 'panel.php');
 }
 
 $error = '';
@@ -24,6 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($usuario && password_verify($password, $usuario['password'])) {
             unset($usuario['password']);
             $_SESSION['usuario'] = $usuario;
+            if (!empty($usuario['must_change_password'])) {
+                redirigir('cambiar-contrasena.php');
+            }
             mensaje_flash('success', '¡Bienvenido/a, ' . $usuario['name'] . '!');
             if ($redirect !== '' && strpos($redirect, URL_APP) === 0) {
                 redirigir($redirect);

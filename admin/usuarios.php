@@ -7,9 +7,16 @@ $tituloPagina = 'Usuarios';
 $buscar = trim($_GET['buscar'] ?? '');
 $role = $_GET['role'] ?? '';
 
+$puedeEditarUsuarios = puede_editar_usuarios();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verificar_csrf();
     $accion = $_POST['accion'] ?? '';
+
+    if (!$puedeEditarUsuarios && in_array($accion, ['cambiar_estado', 'cambiar_rol', 'crear_usuario', 'clave_temporal'], true)) {
+        mensaje_flash('danger', 'Solo un administrador puede editar usuarios.');
+        redirigir('admin/usuarios.php');
+    }
 
     if ($accion === 'cambiar_estado') {
         $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
@@ -37,7 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($accion === 'crear_usuario') {
         $nombre = trim($_POST['nombre'] ?? '');
         $correo = trim($_POST['correo'] ?? '');
-        $clave = $_POST['clave'] ?? '';
+        $usarTemporal = !empty($_POST['clave_temporal']);
+        $clave = $usarTemporal ? generar_contrasena_temporal() : ($_POST['clave'] ?? '');
         $nuevoRol = $_POST['nuevo_rol'] ?? 'student';
         if ($nombre && filter_var($correo, FILTER_VALIDATE_EMAIL) && strlen($clave) >= 6 && in_array($nuevoRol, roles_sistema(), true)) {
             $verificar = bd()->prepare('SELECT id FROM users WHERE email = ?');
@@ -45,12 +53,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($verificar->fetch()) {
                 mensaje_flash('danger', 'El correo ya existe.');
             } else {
-                $consulta = bd()->prepare('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)');
-                $consulta->execute([$nombre, $correo, password_hash($clave, PASSWORD_DEFAULT), $nuevoRol]);
-                mensaje_flash('success', 'Usuario creado.');
+                try {
+                    $consulta = bd()->prepare('INSERT INTO users (name, email, password, role, must_change_password) VALUES (?,?,?,?,?)');
+                    $consulta->execute([$nombre, $correo, password_hash($clave, PASSWORD_DEFAULT), $nuevoRol, $usarTemporal ? 1 : 0]);
+                } catch (PDOException $e) {
+                    $consulta = bd()->prepare('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)');
+                    $consulta->execute([$nombre, $correo, password_hash($clave, PASSWORD_DEFAULT), $nuevoRol]);
+                }
+                if ($usarTemporal) {
+                    $_SESSION['clave_temporal_mostrada'] = [
+                        'nombre' => $nombre,
+                        'email' => $correo,
+                        'clave' => $clave,
+                    ];
+                    mensaje_flash('success', 'Usuario creado con contraseña temporal. Entrégasela para que defina una nueva al entrar.');
+                } else {
+                    mensaje_flash('success', 'Usuario creado.');
+                }
             }
         } else {
             mensaje_flash('danger', 'Datos inválidos para crear usuario.');
+        }
+        redirigir('admin/usuarios.php');
+    }
+
+    if ($accion === 'clave_temporal') {
+        $idUsuario = (int) ($_POST['id_usuario'] ?? 0);
+        if ($idUsuario === (int) usuario_actual()['id']) {
+            mensaje_flash('warning', 'No puedes generar una contraseña temporal para tu propia cuenta.');
+            redirigir('admin/usuarios.php');
+        }
+        $consulta = bd()->prepare('SELECT id, name, email FROM users WHERE id = ? LIMIT 1');
+        $consulta->execute([$idUsuario]);
+        $destino = $consulta->fetch();
+        $clave = $destino ? asignar_contrasena_temporal($idUsuario) : null;
+        if ($clave && $destino) {
+            $_SESSION['clave_temporal_mostrada'] = [
+                'nombre' => $destino['name'],
+                'email' => $destino['email'],
+                'clave' => $clave,
+            ];
+            mensaje_flash('success', 'Contraseña temporal creada. Entrégasela al usuario; al entrar deberá definir una nueva.');
+        } else {
+            mensaje_flash('danger', 'No se pudo crear la contraseña temporal. Actualiza las tablas en instalación.');
         }
         redirigir('admin/usuarios.php');
     }
@@ -91,6 +136,8 @@ $sql .= ' ORDER BY created_at DESC';
 $consulta = bd()->prepare($sql);
 $consulta->execute($parametros);
 $usuarios = $consulta->fetchAll();
+$claveTemporal = $_SESSION['clave_temporal_mostrada'] ?? null;
+unset($_SESSION['clave_temporal_mostrada']);
 
 require_once __DIR__ . '/../includes/encabezado.php';
 ?>
@@ -98,12 +145,26 @@ require_once __DIR__ . '/../includes/encabezado.php';
 <div class="page-header">
     <div>
         <h1>Usuarios</h1>
-        <p class="subtitle"><?= count($usuarios) ?> usuario(s)</p>
+        <p class="subtitle"><?= count($usuarios) ?> usuario(s)<?= $puedeEditarUsuarios ? '' : ' · Solo lectura' ?></p>
     </div>
+    <?php if ($puedeEditarUsuarios): ?>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
         <i class="bi bi-person-plus me-1"></i> Nuevo usuario
     </button>
+    <?php endif; ?>
 </div>
+
+<?php if ($claveTemporal): ?>
+<div class="alert alert-info shadow-sm">
+    <div class="fw-semibold mb-1">Contraseña temporal para <?= escapar($claveTemporal['nombre']) ?></div>
+    <div class="small mb-2"><?= escapar($claveTemporal['email']) ?></div>
+    <div class="input-group" style="max-width: 360px;">
+        <input type="text" class="form-control fw-semibold" id="clave-temporal-generada" value="<?= escapar($claveTemporal['clave']) ?>" readonly>
+        <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('clave-temporal-generada').value)"><i class="bi bi-clipboard"></i> Copiar</button>
+    </div>
+    <div class="small mt-2 mb-0">Al iniciar sesión con esta clave, el usuario irá a crear su contraseña definitiva y luego entrará al campus.</div>
+</div>
+<?php endif; ?>
 
 <div class="panel mb-4">
     <div class="panel-body">
@@ -149,13 +210,14 @@ require_once __DIR__ . '/../includes/encabezado.php';
                                 <div>
                                     <strong><?= escapar($u['name']) ?></strong>
                                     <div class="small text-muted"><?= escapar($u['email']) ?></div>
+                                    <?php if (!empty($u['must_change_password'])): ?>
+                                        <span class="badge bg-warning text-dark mt-1">Clave temporal</span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <?php if ((int) $u['id'] === (int) usuario_actual()['id']): ?>
-                                <?= insignia_rol($u['role']) ?>
-                            <?php else: ?>
+                            <?php if ($puedeEditarUsuarios && (int) $u['id'] !== (int) usuario_actual()['id']): ?>
                                 <form method="post" class="d-flex gap-1">
                                     <?= campo_csrf() ?>
                                     <input type="hidden" name="accion" value="cambiar_rol">
@@ -167,6 +229,8 @@ require_once __DIR__ . '/../includes/encabezado.php';
                                         <option value="student" <?= $u['role'] === 'student' ? 'selected' : '' ?>>Estudiante</option>
                                     </select>
                                 </form>
+                            <?php else: ?>
+                                <?= insignia_rol($u['role']) ?>
                             <?php endif; ?>
                         </td>
                         <td>
@@ -176,7 +240,17 @@ require_once __DIR__ . '/../includes/encabezado.php';
                         </td>
                         <td><?= formatear_fecha($u['created_at']) ?></td>
                         <td class="text-end">
-                            <?php if ((int) $u['id'] !== (int) usuario_actual()['id']): ?>
+                            <?php if (!$puedeEditarUsuarios): ?>
+                                <span class="text-muted small">—</span>
+                            <?php elseif ((int) $u['id'] !== (int) usuario_actual()['id']): ?>
+                            <form method="post" class="d-inline">
+                                <?= campo_csrf() ?>
+                                <input type="hidden" name="accion" value="clave_temporal">
+                                <input type="hidden" name="id_usuario" value="<?= (int) $u['id'] ?>">
+                                <button class="btn btn-sm btn-outline-primary" type="submit" title="Crear contraseña temporal" onclick="return confirm('¿Generar una contraseña temporal? El usuario deberá crear una nueva al entrar.');">
+                                    <i class="bi bi-key"></i>
+                                </button>
+                            </form>
                             <form method="post" class="d-inline">
                                 <?= campo_csrf() ?>
                                 <input type="hidden" name="accion" value="cambiar_estado">
@@ -203,6 +277,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
     </div>
 </div>
 
+<?php if ($puedeEditarUsuarios): ?>
 <div class="modal fade" id="createUserModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="post" class="modal-content">
@@ -223,7 +298,11 @@ require_once __DIR__ . '/../includes/encabezado.php';
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Contraseña</label>
-                    <input type="password" name="clave" class="form-control" required minlength="6">
+                    <input type="password" name="clave" class="form-control" id="clave-nuevo-usuario" minlength="6">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="clave_temporal" value="1" id="usar-clave-temporal" checked>
+                        <label class="form-check-label" for="usar-clave-temporal">Crear contraseña temporal (el usuario la cambiará al entrar)</label>
+                    </div>
                 </div>
                 <div class="mb-0">
                     <label class="form-label">Rol</label>
@@ -242,5 +321,22 @@ require_once __DIR__ . '/../includes/encabezado.php';
         </form>
     </div>
 </div>
+<?php endif; ?>
 
+<?php if ($puedeEditarUsuarios): ?>
+<script>
+(function () {
+    const check = document.getElementById('usar-clave-temporal');
+    const clave = document.getElementById('clave-nuevo-usuario');
+    if (!check || !clave) return;
+    function sync() {
+        clave.required = !check.checked;
+        clave.disabled = check.checked;
+        if (check.checked) clave.value = '';
+    }
+    check.addEventListener('change', sync);
+    sync();
+})();
+</script>
+<?php endif; ?>
 <?php require_once __DIR__ . '/../includes/pie.php'; ?>

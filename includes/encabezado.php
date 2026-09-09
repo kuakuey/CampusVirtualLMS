@@ -4,6 +4,7 @@ $tituloPagina = $tituloPagina ?? NOMBRE_APP;
 $usuario = usuario_actual();
 $mensaje = obtener_mensaje();
 $paginaActual = basename($_SERVER['PHP_SELF']);
+$soloCambioClave = $paginaActual === 'cambiar-contrasena.php' && usuario_debe_cambiar_clave();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -15,8 +16,8 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="<?= URL_APP ?>/assets/css/style.css" rel="stylesheet">
 </head>
-<body class="<?= $usuario ? 'app-body' : 'auth-body' ?>">
-<?php if ($usuario): ?>
+<body class="<?= $usuario && !$soloCambioClave ? 'app-body' : 'auth-body' ?>">
+<?php if ($usuario && !$soloCambioClave): ?>
 <nav class="navbar navbar-expand-lg navbar-dark app-navbar sticky-top">
     <div class="container-fluid px-3 px-lg-4">
         <a class="navbar-brand d-flex align-items-center gap-2" href="<?= URL_PANEL ?>">
@@ -99,9 +100,9 @@ $paginaActual = basename($_SERVER['PHP_SELF']);
 </nav>
 <?php endif; ?>
 
-<main class="<?= $usuario ? 'app-main' : '' ?>">
-    <div class="<?= $usuario ? 'container-fluid px-3 px-lg-4 py-4' : '' ?>">
-        <?php if (esta_en_vista_estudiante()): ?>
+<main class="<?= $usuario && !$soloCambioClave ? 'app-main' : '' ?>">
+    <div class="<?= $usuario && !$soloCambioClave ? 'container-fluid px-3 px-lg-4 py-4' : '' ?>">
+        <?php if (!$soloCambioClave && esta_en_vista_estudiante()): ?>
         <?php $rolReal = $rolReal ?? usuario_real(); ?>
         <div class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-sm mb-3" role="alert">
             <div>

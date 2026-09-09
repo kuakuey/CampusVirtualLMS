@@ -72,8 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($new !== $confirm) {
             $errors[] = 'La confirmación no coincide.';
         } else {
-            $stmt = bd()->prepare('UPDATE users SET password=? WHERE id=?');
-            $stmt->execute([password_hash($new, PASSWORD_DEFAULT), $usuario['id']]);
+            try {
+                $stmt = bd()->prepare('UPDATE users SET password=?, must_change_password=0 WHERE id=?');
+                $stmt->execute([password_hash($new, PASSWORD_DEFAULT), $usuario['id']]);
+            } catch (PDOException $e) {
+                $stmt = bd()->prepare('UPDATE users SET password=? WHERE id=?');
+                $stmt->execute([password_hash($new, PASSWORD_DEFAULT), $usuario['id']]);
+            }
+            sincronizar_sesion_usuario((int) $usuario['id']);
             mensaje_flash('success', 'Contraseña actualizada.');
             redirigir('perfil.php');
         }
