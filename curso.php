@@ -766,59 +766,57 @@ require_once __DIR__ . '/includes/encabezado.php';
 
 <div class="modal fade" id="modalNuevaLeccion" tabindex="-1" aria-labelledby="tituloNuevaLeccion" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <form method="post" enctype="multipart/form-data">
-                <?= campo_csrf() ?>
-                <input type="hidden" name="accion" value="agregar_leccion">
-                <div class="modal-header">
-                    <h2 class="modal-title h5" id="tituloNuevaLeccion">Nueva lección</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <form method="post" enctype="multipart/form-data" class="modal-content">
+            <?= campo_csrf() ?>
+            <input type="hidden" name="accion" value="agregar_leccion">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="tituloNuevaLeccion">Nueva lección</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <?php if ($mostrarSubcursos): ?>
+                <div class="mb-3">
+                    <label class="form-label">Módulo</label>
+                    <select name="subcourse_id" class="form-select" required>
+                        <?php foreach ($subcursos as $subcurso): ?>
+                            <option value="<?= (int) $subcurso['id'] ?>" <?= $idModuloActivo === (int) $subcurso['id'] ? 'selected' : '' ?>>
+                                <?= escapar($subcurso['title']) ?><?= !empty($subcurso['teacher_name']) ? ' · ' . escapar($subcurso['teacher_name']) : '' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-                <div class="modal-body">
-                    <?php if ($mostrarSubcursos): ?>
-                    <div class="mb-3">
-                        <label class="form-label">Módulo</label>
-                        <select name="subcourse_id" class="form-select" required>
-                            <?php foreach ($subcursos as $subcurso): ?>
-                                <option value="<?= (int) $subcurso['id'] ?>" <?= $idModuloActivo === (int) $subcurso['id'] ? 'selected' : '' ?>>
-                                    <?= escapar($subcurso['title']) ?><?= !empty($subcurso['teacher_name']) ? ' · ' . escapar($subcurso['teacher_name']) : '' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                <?php elseif ($subcursos): ?>
+                    <input type="hidden" name="subcourse_id" value="<?= (int) $subcursos[0]['id'] ?>">
+                <?php endif; ?>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Título</label>
+                        <input type="text" name="title" class="form-control" required id="nuevo-leccion-titulo">
                     </div>
-                    <?php elseif ($subcursos): ?>
-                        <input type="hidden" name="subcourse_id" value="<?= (int) $subcursos[0]['id'] ?>">
-                    <?php endif; ?>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-8">
-                            <label class="form-label">Título</label>
-                            <input type="text" name="title" class="form-control" required id="nuevo-leccion-titulo">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Fecha de la sesión</label>
-                            <input type="date" name="lesson_date" class="form-control" id="nuevo-leccion-fecha">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Contenido (HTML permitido)</label>
-                        <textarea name="content" class="form-control" rows="5"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">URL de video (opcional)</label>
-                        <input type="url" name="video_url" class="form-control" placeholder="https://...">
-                    </div>
-                    <div class="mb-0">
-                        <label class="form-label">Documento (opcional)</label>
-                        <input type="file" name="documento" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt">
-                        <small class="text-muted">PDF, Word, Excel, PowerPoint, imágenes o texto. Se podrá previsualizar al abrir la lección.</small>
+                    <div class="col-md-4">
+                        <label class="form-label">Fecha de la sesión</label>
+                        <input type="date" name="lesson_date" class="form-control" id="nuevo-leccion-fecha">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button class="btn btn-primary" type="submit">Agregar lección</button>
+                <div class="mb-3">
+                    <label class="form-label">Contenido (HTML permitido)</label>
+                    <textarea name="content" class="form-control" rows="5"></textarea>
                 </div>
-            </form>
-        </div>
+                <div class="mb-3">
+                    <label class="form-label">URL de video (opcional)</label>
+                    <input type="url" name="video_url" class="form-control" placeholder="https://...">
+                </div>
+                <div class="mb-0">
+                    <label class="form-label">Documento (opcional)</label>
+                    <input type="file" name="documento" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt">
+                    <small class="text-muted">PDF, Word, Excel, PowerPoint, imágenes o texto. Se podrá previsualizar al abrir la lección.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-primary" type="submit">Agregar lección</button>
+            </div>
+        </form>
     </div>
 </div>
 <?php endif; ?>
