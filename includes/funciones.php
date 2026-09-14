@@ -76,22 +76,31 @@ function mensaje_flash(string $tipo, string $mensaje): void
 
 function obtener_mensaje(): ?array
 {
-    if (!isset($_SESSION['mensaje'])) {
+    $mensaje = $_SESSION['mensaje'] ?? null;
+    unset($_SESSION['mensaje']);
+    if (!is_array($mensaje) || !isset($mensaje['tipo'], $mensaje['mensaje'])) {
         return null;
     }
-    $mensaje = $_SESSION['mensaje'];
-    unset($_SESSION['mensaje']);
     return $mensaje;
+}
+
+function usuario_sesion_valida($usuario): bool
+{
+    return is_array($usuario)
+        && isset($usuario['id'], $usuario['name'], $usuario['role'])
+        && is_string($usuario['name'])
+        && is_string($usuario['role'])
+        && $usuario['role'] !== '';
 }
 
 function esta_logueado(): bool
 {
-    return isset($_SESSION['usuario']);
+    return usuario_sesion_valida($_SESSION['usuario'] ?? null);
 }
 
 function usuario_actual(): ?array
 {
-    $usuario = $_SESSION['usuario'] ?? null;
+    $usuario = usuario_real();
     if ($usuario && !empty($_SESSION['vista_estudiante']) && puede_cambiar_vista($usuario)) {
         $copia = $usuario;
         $copia['role'] = 'student';
@@ -103,12 +112,13 @@ function usuario_actual(): ?array
 
 function usuario_real(): ?array
 {
-    return $_SESSION['usuario'] ?? null;
+    $usuario = $_SESSION['usuario'] ?? null;
+    return usuario_sesion_valida($usuario) ? $usuario : null;
 }
 
 function esta_en_vista_estudiante(): bool
 {
-    $usuario = $_SESSION['usuario'] ?? null;
+    $usuario = usuario_real();
     return $usuario && !empty($_SESSION['vista_estudiante']) && puede_cambiar_vista($usuario);
 }
 
@@ -312,7 +322,7 @@ function campo_csrf(): string
 function verificar_csrf(): void
 {
     $token = $_POST['token_csrf'] ?? '';
-    if (!hash_equals(token_csrf(), $token)) {
+    if (!is_string($token) || !hash_equals(token_csrf(), $token)) {
         mensaje_flash('danger', 'Token de seguridad inválido. Intenta de nuevo.');
         redirigir($_SERVER['HTTP_REFERER'] ?? 'panel.php');
     }
@@ -1321,8 +1331,9 @@ function url_avatar_usuario(?string $avatar): ?string
 
 function renderizar_avatar_usuario(array $usuario, int $size = 40, string $clasesExtra = ''): string
 {
-    $nombre = $usuario['name'] ?? '';
-    $url = url_avatar_usuario($usuario['avatar'] ?? null);
+    $nombre = is_string($usuario['name'] ?? null) ? $usuario['name'] : '';
+    $avatar = $usuario['avatar'] ?? null;
+    $url = url_avatar_usuario(is_string($avatar) ? $avatar : null);
     $fontSize = max(0.65, round($size / 28, 2));
     $style = 'width:' . $size . 'px;height:' . $size . 'px;font-size:' . $fontSize . 'rem;';
     $clases = trim('user-avatar ' . $clasesExtra);

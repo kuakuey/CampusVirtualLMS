@@ -107,9 +107,117 @@ if (is_dir($directorioLogs) && is_writable($directorioLogs)) {
     ini_set('error_log', $directorioLogs . '/errores.log');
 }
 error_reporting(E_ALL);
+ini_set('display_errors', '0');
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+iniciar_sesion_aplicacion();
+
+function ruta_cookie_sesion(): string
+{
+    $ruta = parse_url(URL_APP, PHP_URL_PATH);
+    $ruta = is_string($ruta) ? rtrim(str_replace('\\', '/', $ruta), '/') : '';
+    return $ruta === '' ? '/' : $ruta;
+}
+
+function peticion_es_https(): bool
+{
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+        || (!empty($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
+}
+
+function opciones_cookie_http(int $expira, string $ruta): array
+{
+    return [
+        'expires' => $expira,
+        'path' => $ruta,
+        'secure' => peticion_es_https(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+}
+
+function expirar_cookie(string $nombre, string $ruta): void
+{
+    if (headers_sent()) {
+        return;
+    }
+    setcookie($nombre, '', opciones_cookie_http(time() - 3600, $ruta));
+}
+
+function limpiar_datos_sesion_aplicacion(): void
+{
+    if (!isset($_SESSION) || !is_array($_SESSION)) {
+        $_SESSION = [];
+        return;
+    }
+    if (isset($_SESSION['usuario'])) {
+        $usuario = $_SESSION['usuario'];
+        if (!is_array($usuario) || !isset($usuario['id'], $usuario['name'], $usuario['role'])) {
+            unset($_SESSION['usuario'], $_SESSION['vista_estudiante']);
+        }
+    }
+    if (isset($_SESSION['mensaje']) && (
+        !is_array($_SESSION['mensaje'])
+        || !isset($_SESSION['mensaje']['tipo'], $_SESSION['mensaje']['mensaje'])
+    )) {
+        unset($_SESSION['mensaje']);
+    }
+}
+
+function iniciar_sesion_aplicacion(): void
+{
+    $nombreSesion = 'AULAVIRTUALSSID';
+    $rutaCookie = ruta_cookie_sesion();
+
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        if (session_name() === $nombreSesion) {
+            limpiar_datos_sesion_aplicacion();
+            return;
+        }
+        session_write_close();
+    }
+
+    if (!headers_sent()) {
+        session_name($nombreSesion);
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => $rutaCookie,
+            'secure' => peticion_es_https(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+
+    // La cookie PHPSESSID con path=/ se envía también a WordPress en la raíz
+    // y una sesión mezclada/corrupta provoca HTTP 500 hasta borrar cookies.
+    if (!empty($_COOKIE['PHPSESSID'])) {
+        expirar_cookie('PHPSESSID', '/');
+        if ($rutaCookie !== '/') {
+            expirar_cookie('PHPSESSID', $rutaCookie);
+        }
+        unset($_COOKIE['PHPSESSID']);
+    }
+
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+
+    try {
+        if (session_status() === PHP_SESSION_NONE && !session_start()) {
+            throw new RuntimeException('No se pudo iniciar la sesión');
+        }
+    } catch (Throwable $e) {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION = [];
+            session_destroy();
+        }
+        expirar_cookie($nombreSesion, $rutaCookie);
+        unset($_COOKIE[$nombreSesion]);
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    }
+
+    limpiar_datos_sesion_aplicacion();
 }
 
 function salir_configuracion(string $titulo, string $detalle): void
