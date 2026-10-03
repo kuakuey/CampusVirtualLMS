@@ -222,25 +222,29 @@ body {
     background: #fff;
 }
 
-.matricula-resultados button {
-    display: block;
-    width: 100%;
-    text-align: left;
-    border: 0;
-    border-bottom: 1px solid var(--av-border);
-    background: transparent;
+.matricula-opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin: 0;
     padding: 0.65rem 0.85rem;
-    color: var(--av-ink);
+    border-bottom: 1px solid var(--av-border);
+    cursor: pointer;
 }
 
-.matricula-resultados button:last-child {
+.matricula-opcion:last-child {
     border-bottom: 0;
 }
 
-.matricula-resultados button:hover,
-.matricula-resultados button:focus {
+.matricula-opcion:hover,
+.matricula-opcion:has(input:focus),
+.matricula-opcion:has(input:checked) {
     background: var(--av-teal-light);
-    outline: none;
+}
+
+.matricula-opcion input {
+    margin-top: 0.25rem;
+    flex-shrink: 0;
 }
 
 .matricula-resultados .nombre {
@@ -253,16 +257,6 @@ body {
     display: block;
     color: var(--av-muted);
     font-size: 0.85rem;
-}
-
-.matricula-seleccion {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.65rem 0.85rem;
-    border-radius: 10px;
-    background: var(--av-teal-light);
 }
 
 .course-card {
