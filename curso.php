@@ -1148,7 +1148,7 @@ require_once __DIR__ . '/includes/encabezado.php';
 </div>
 <?php if ($puedeMatricularManual): ?>
 <div class="modal fade" id="modalMatricularEstudiante" tabindex="-1" aria-labelledby="tituloMatricularEstudiante" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-matricula">
         <div class="modal-content">
             <form method="post">
                 <?= campo_csrf() ?>
@@ -1215,7 +1215,6 @@ require_once __DIR__ . '/includes/encabezado.php';
             if (coincide) visibles++;
         });
         if (vacio) vacio.hidden = visibles > 0;
-        resultados.hidden = visibles === 0;
     });
 
     resultados.addEventListener('change', actualizarBoton);

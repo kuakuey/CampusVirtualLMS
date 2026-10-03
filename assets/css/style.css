@@ -214,11 +214,23 @@ body {
 
 .panel-body { padding: 1.25rem; }
 
+.modal-matricula .modal-content {
+    max-height: calc(100vh - 2rem);
+    overflow: hidden;
+}
+
+.modal-matricula .modal-body {
+    overflow: hidden;
+}
+
 .matricula-resultados {
+    height: 240px;
+    max-height: 40vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     border: 1px solid var(--av-border);
     border-radius: 10px;
-    max-height: 240px;
-    overflow: auto;
     background: #fff;
 }
 
@@ -245,6 +257,11 @@ body {
 .matricula-opcion input {
     margin-top: 0.25rem;
     flex-shrink: 0;
+}
+
+.matricula-opcion > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .matricula-resultados .nombre {
