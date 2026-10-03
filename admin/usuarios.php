@@ -78,21 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$sql = 'SELECT * FROM users WHERE 1=1';
-$parametros = [];
-if ($buscar !== '') {
-    $sql .= ' AND (name LIKE ? OR email LIKE ?)';
-    $like = '%' . $buscar . '%';
-    $parametros[] = $like;
-    $parametros[] = $like;
-}
-if ($role !== '' && in_array($role, roles_sistema(), true)) {
-    $sql .= ' AND role = ?';
-    $parametros[] = $role;
-}
-$sql .= ' ORDER BY created_at DESC';
-$consulta = bd()->prepare($sql);
-$consulta->execute($parametros);
+$consulta = bd()->query('SELECT * FROM users ORDER BY created_at DESC');
 $usuarios = $consulta->fetchAll();
 
 require_once __DIR__ . '/../includes/encabezado.php';
@@ -101,7 +87,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
 <div class="page-header">
     <div>
         <h1>Usuarios</h1>
-        <p class="subtitle"><?= count($usuarios) ?> usuario(s)<?= $puedeEditarUsuarios ? '' : ' · Solo lectura' ?></p>
+        <p class="subtitle"><span id="conteo-usuarios"><?= count($usuarios) ?></span> usuario(s)<?= $puedeEditarUsuarios ? '' : ' · Solo lectura' ?></p>
     </div>
     <?php if ($puedeEditarUsuarios): ?>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
@@ -112,12 +98,14 @@ require_once __DIR__ . '/../includes/encabezado.php';
 
 <div class="panel mb-4">
     <div class="panel-body">
-        <form class="row g-2" method="get">
-            <div class="col-md-6">
-                <input type="text" name="buscar" class="form-control" value="<?= escapar($buscar) ?>" placeholder="Buscar por nombre o correo">
+        <div class="row g-2">
+            <div class="col-md-8">
+                <label class="form-label" for="buscar-usuarios">Buscar</label>
+                <input type="search" id="buscar-usuarios" class="form-control" value="<?= escapar($buscar) ?>" placeholder="Nombre o correo" autocomplete="off">
             </div>
             <div class="col-md-4">
-                <select name="role" class="form-select">
+                <label class="form-label" for="filtro-rol-usuarios">Rol</label>
+                <select id="filtro-rol-usuarios" class="form-select">
                     <option value="">Todos los roles</option>
                     <option value="admin" <?= $role === 'admin' ? 'selected' : '' ?>>Administrador</option>
                     <option value="gestor" <?= $role === 'gestor' ? 'selected' : '' ?>>Gestor</option>
@@ -125,10 +113,7 @@ require_once __DIR__ . '/../includes/encabezado.php';
                     <option value="student" <?= $role === 'student' ? 'selected' : '' ?>>Estudiante</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <button class="btn btn-primary w-100" type="submit">Filtrar</button>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -145,10 +130,13 @@ require_once __DIR__ . '/../includes/encabezado.php';
                         <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="lista-usuarios">
+                    <tr id="usuarios-sin-coincidencias" hidden>
+                        <td colspan="5" class="text-center text-muted py-4">Ningún usuario coincide con la búsqueda.</td>
+                    </tr>
                     <?php foreach ($usuarios as $u): ?>
                     <?php $esPropio = (int) $u['id'] === (int) usuario_actual()['id']; ?>
-                    <tr>
+                    <tr data-rol="<?= escapar($u['role']) ?>" data-busqueda="<?= escapar(mb_strtolower($u['name'] . ' ' . $u['email'], 'UTF-8')) ?>">
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <?= renderizar_avatar_usuario($u, 34) ?>
@@ -252,4 +240,35 @@ require_once __DIR__ . '/../includes/encabezado.php';
 })();
 </script>
 <?php endif; ?>
+<script>
+(function () {
+    const entrada = document.getElementById('buscar-usuarios');
+    const rol = document.getElementById('filtro-rol-usuarios');
+    const lista = document.getElementById('lista-usuarios');
+    const vacio = document.getElementById('usuarios-sin-coincidencias');
+    const conteo = document.getElementById('conteo-usuarios');
+    if (!entrada || !rol || !lista) return;
+
+    const filas = Array.from(lista.querySelectorAll('tr[data-busqueda]'));
+
+    function filtrar() {
+        const consulta = entrada.value.trim().toLowerCase();
+        const rolElegido = rol.value;
+        let visibles = 0;
+        filas.forEach(function (fila) {
+            const coincideTexto = consulta === '' || (fila.dataset.busqueda || '').includes(consulta);
+            const coincideRol = rolElegido === '' || fila.dataset.rol === rolElegido;
+            const visible = coincideTexto && coincideRol;
+            fila.hidden = !visible;
+            if (visible) visibles++;
+        });
+        if (conteo) conteo.textContent = String(visibles);
+        if (vacio) vacio.hidden = visibles > 0;
+    }
+
+    entrada.addEventListener('input', filtrar);
+    rol.addEventListener('change', filtrar);
+    filtrar();
+})();
+</script>
 <?php require_once __DIR__ . '/../includes/pie.php'; ?>
