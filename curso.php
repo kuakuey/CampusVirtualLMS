@@ -266,6 +266,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirigir("curso.php?id=$id&pestaña=estudiantes");
     }
 
+    if ($accion === 'matricular_estudiante' && puede_matricular_manual()) {
+        $idEstudiante = (int) ($_POST['id_estudiante'] ?? 0);
+        $consulta = bd()->prepare('SELECT id, name, role, status FROM users WHERE id = ? LIMIT 1');
+        $consulta->execute([$idEstudiante]);
+        $estudiante = $consulta->fetch();
+        if (!$estudiante || ($estudiante['role'] ?? '') !== 'student' || empty($estudiante['status'])) {
+            mensaje_flash('danger', 'Solo puedes matricular estudiantes activos.');
+        } elseif (esta_matriculado($id, $idEstudiante)) {
+            mensaje_flash('info', 'Ese estudiante ya está matriculado en el curso.');
+        } elseif (inscribir_estudiante_en_curso($id, $idEstudiante)) {
+            mensaje_flash('success', '«' . $estudiante['name'] . '» quedó matriculado en el curso.');
+        } else {
+            mensaje_flash('danger', 'No se pudo completar la matrícula.');
+        }
+        redirigir("curso.php?id=$id&pestaña=estudiantes");
+    }
+
     if ($accion === 'eliminar_curso' && $puedeEliminar) {
         limpiar_archivos_curso($id);
         $stmt = bd()->prepare('DELETE FROM courses WHERE id = ?');
@@ -374,6 +391,8 @@ if ($idTema) {
 }
 
 $estudiantes = [];
+$candidatosMatricula = [];
+$puedeMatricularManual = puede_matricular_manual() && !esta_en_vista_estudiante();
 $resumenSeguimientoLecciones = [];
 $totalAlumnosActivos = 0;
 if ($esDocenteAsignado) {
@@ -384,6 +403,9 @@ if ($esDocenteAsignado) {
     );
     $stmt->execute([$id]);
     $estudiantes = $stmt->fetchAll();
+    if ($puedeMatricularManual && $pestaña === 'estudiantes') {
+        $candidatosMatricula = estudiantes_disponibles_para_matricular($id);
+    }
     foreach ($estudiantes as $st) {
         if (($st['status'] ?? '') === 'active') {
             $totalAlumnosActivos++;
@@ -1055,6 +1077,11 @@ require_once __DIR__ . '/includes/encabezado.php';
 <div class="panel">
     <div class="panel-header">
         <h2>Estudiantes inscritos (<?= count($estudiantes) ?>)</h2>
+        <?php if ($puedeMatricularManual): ?>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalMatricularEstudiante">
+            <i class="bi bi-person-plus me-1"></i> Matricular manualmente
+        </button>
+        <?php endif; ?>
     </div>
     <div class="panel-body p-0">
         <div class="table-responsive">
@@ -1070,7 +1097,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                 </thead>
                 <tbody>
                     <?php if (!$estudiantes): ?>
-                        <tr><td colspan="5" class="text-center text-muted py-4">Sin estudiantes inscritos.</td></tr>
+                        <tr><td colspan="5" class="text-center text-muted py-4">Sin estudiantes inscritos.<?php if ($puedeMatricularManual): ?> Puedes matricularlos manualmente.<?php endif; ?></td></tr>
                     <?php endif; ?>
                     <?php foreach ($estudiantes as $st): ?>
                     <tr>
@@ -1095,6 +1122,55 @@ require_once __DIR__ . '/includes/encabezado.php';
         </div>
     </div>
 </div>
+<?php if ($puedeMatricularManual): ?>
+<div class="modal fade" id="modalMatricularEstudiante" tabindex="-1" aria-labelledby="tituloMatricularEstudiante" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post">
+                <?= campo_csrf() ?>
+                <input type="hidden" name="accion" value="matricular_estudiante">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="tituloMatricularEstudiante">Matricular estudiante</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <?php if (!$candidatosMatricula): ?>
+                        <p class="text-muted mb-0">No hay estudiantes activos disponibles. Todos ya están matriculados o no hay cuentas de estudiante.</p>
+                    <?php else: ?>
+                        <p class="small text-muted">La matrícula manual no usa la contraseña, el enlace ni la fecha límite del curso.</p>
+                        <label class="form-label" for="filtro-matricula">Buscar</label>
+                        <input type="search" class="form-control mb-3" id="filtro-matricula" placeholder="Nombre o correo" autocomplete="off">
+                        <label class="form-label" for="estudiante-matricula">Estudiante</label>
+                        <select name="id_estudiante" id="estudiante-matricula" class="form-select" required>
+                            <option value="">Selecciona un estudiante</option>
+                            <?php foreach ($candidatosMatricula as $candidato): ?>
+                                <option value="<?= (int) $candidato['id'] ?>"><?= escapar($candidato['name']) ?> — <?= escapar($candidato['email']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <?php if ($candidatosMatricula): ?>
+                    <button class="btn btn-primary" type="submit">Matricular</button>
+                    <?php endif; ?>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+document.getElementById('filtro-matricula')?.addEventListener('input', function () {
+    const consulta = this.value.trim().toLowerCase();
+    const select = document.getElementById('estudiante-matricula');
+    if (!select) return;
+    Array.from(select.options).forEach(function (opcion) {
+        if (!opcion.value) return;
+        opcion.hidden = consulta !== '' && !opcion.textContent.toLowerCase().includes(consulta);
+    });
+});
+</script>
+<?php endif; ?>
 <?php endif; ?>
 
 <?php require_once __DIR__ . '/includes/pie.php'; ?>

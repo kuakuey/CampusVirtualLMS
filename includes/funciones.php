@@ -900,6 +900,27 @@ function inscribir_estudiante_en_curso(int $idCurso, int $idEstudiante): bool
     return $consulta->execute([$idCurso, $idEstudiante]);
 }
 
+function puede_matricular_manual(?array $usuario = null): bool
+{
+    return es_admin_o_gestor($usuario ?? usuario_real());
+}
+
+function estudiantes_disponibles_para_matricular(int $idCurso): array
+{
+    $consulta = bd()->prepare(
+        'SELECT u.id, u.name, u.email
+         FROM users u
+         WHERE u.role = "student" AND u.status = 1
+           AND NOT EXISTS (
+               SELECT 1 FROM enrollments e
+               WHERE e.course_id = ? AND e.student_id = u.id AND e.status = "active"
+           )
+         ORDER BY u.name'
+    );
+    $consulta->execute([$idCurso]);
+    return $consulta->fetchAll();
+}
+
 function descripcion_lista_curso(array $curso, int $limite = 120): string
 {
     $breve = trim((string) ($curso['short_description'] ?? ''));
