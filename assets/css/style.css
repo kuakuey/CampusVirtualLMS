@@ -214,6 +214,57 @@ body {
 
 .panel-body { padding: 1.25rem; }
 
+.matricula-resultados {
+    border: 1px solid var(--av-border);
+    border-radius: 10px;
+    max-height: 240px;
+    overflow: auto;
+    background: #fff;
+}
+
+.matricula-resultados button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid var(--av-border);
+    background: transparent;
+    padding: 0.65rem 0.85rem;
+    color: var(--av-ink);
+}
+
+.matricula-resultados button:last-child {
+    border-bottom: 0;
+}
+
+.matricula-resultados button:hover,
+.matricula-resultados button:focus {
+    background: var(--av-teal-light);
+    outline: none;
+}
+
+.matricula-resultados .nombre {
+    display: block;
+    font-weight: 600;
+}
+
+.matricula-resultados .correo,
+.matricula-vacio {
+    display: block;
+    color: var(--av-muted);
+    font-size: 0.85rem;
+}
+
+.matricula-seleccion {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 10px;
+    background: var(--av-teal-light);
+}
+
 .course-card {
     background: var(--av-card);
     border: 1px solid var(--av-border);

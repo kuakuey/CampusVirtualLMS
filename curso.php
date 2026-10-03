@@ -1137,16 +1137,26 @@ require_once __DIR__ . '/includes/encabezado.php';
                     <?php if (!$candidatosMatricula): ?>
                         <p class="text-muted mb-0">No hay estudiantes activos disponibles. Todos ya están matriculados o no hay cuentas de estudiante.</p>
                     <?php else: ?>
-                        <p class="small text-muted">La matrícula manual no usa la contraseña, el enlace ni la fecha límite del curso.</p>
-                        <label class="form-label" for="filtro-matricula">Buscar</label>
-                        <input type="search" class="form-control mb-3" id="filtro-matricula" placeholder="Nombre o correo" autocomplete="off">
-                        <label class="form-label" for="estudiante-matricula">Estudiante</label>
-                        <select name="id_estudiante" id="estudiante-matricula" class="form-select" required>
-                            <option value="">Selecciona un estudiante</option>
-                            <?php foreach ($candidatosMatricula as $candidato): ?>
-                                <option value="<?= (int) $candidato['id'] ?>"><?= escapar($candidato['name']) ?> — <?= escapar($candidato['email']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <p class="small text-muted">Escribe el nombre o el correo. La matrícula manual no usa la contraseña, el enlace ni la fecha límite del curso.</p>
+                        <label class="form-label" for="filtro-matricula">Buscar estudiante</label>
+                        <input type="search" class="form-control" id="filtro-matricula" placeholder="Nombre o correo" autocomplete="off" aria-controls="resultados-matricula" aria-autocomplete="list">
+                        <input type="hidden" name="id_estudiante" id="estudiante-matricula" value="">
+                        <div id="resultados-matricula" class="matricula-resultados mt-2" hidden></div>
+                        <p id="matricula-vacio" class="matricula-vacio mt-2 mb-0" hidden>No hay coincidencias.</p>
+                        <div id="seleccion-matricula" class="matricula-seleccion mt-2" hidden>
+                            <div>
+                                <strong id="seleccion-matricula-nombre"></strong>
+                                <div class="small text-muted" id="seleccion-matricula-correo"></div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="limpiar-matricula">Cambiar</button>
+                        </div>
+                        <script type="application/json" id="candidatos-matricula"><?= json_encode(array_map(static function (array $candidato): array {
+                            return [
+                                'id' => (int) $candidato['id'],
+                                'name' => $candidato['name'],
+                                'email' => $candidato['email'],
+                            ];
+                        }, $candidatosMatricula), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
                     <?php endif; ?>
                 </div>
                 <div class="modal-footer">
@@ -1160,15 +1170,89 @@ require_once __DIR__ . '/includes/encabezado.php';
     </div>
 </div>
 <script>
-document.getElementById('filtro-matricula')?.addEventListener('input', function () {
-    const consulta = this.value.trim().toLowerCase();
-    const select = document.getElementById('estudiante-matricula');
-    if (!select) return;
-    Array.from(select.options).forEach(function (opcion) {
-        if (!opcion.value) return;
-        opcion.hidden = consulta !== '' && !opcion.textContent.toLowerCase().includes(consulta);
+(function () {
+    const entrada = document.getElementById('filtro-matricula');
+    const datos = document.getElementById('candidatos-matricula');
+    const resultados = document.getElementById('resultados-matricula');
+    const vacio = document.getElementById('matricula-vacio');
+    const elegido = document.getElementById('estudiante-matricula');
+    const seleccion = document.getElementById('seleccion-matricula');
+    const formulario = entrada ? entrada.closest('form') : null;
+    if (!entrada || !datos || !resultados || !elegido || !formulario) return;
+
+    const candidatos = JSON.parse(datos.textContent || '[]');
+
+    function ocultarResultados() {
+        resultados.hidden = true;
+        resultados.replaceChildren();
+        if (vacio) vacio.hidden = true;
+    }
+
+    function mostrarSeleccion(persona) {
+        elegido.value = String(persona.id);
+        document.getElementById('seleccion-matricula-nombre').textContent = persona.name;
+        document.getElementById('seleccion-matricula-correo').textContent = persona.email;
+        seleccion.hidden = false;
+        entrada.value = '';
+        ocultarResultados();
+    }
+
+    entrada.addEventListener('input', function () {
+        elegido.value = '';
+        seleccion.hidden = true;
+        const consulta = entrada.value.trim().toLowerCase();
+        resultados.replaceChildren();
+        if (consulta === '') {
+            ocultarResultados();
+            return;
+        }
+        const coincidencias = candidatos.filter(function (persona) {
+            return (persona.name + ' ' + persona.email).toLowerCase().includes(consulta);
+        }).slice(0, 8);
+        if (!coincidencias.length) {
+            resultados.hidden = true;
+            if (vacio) {
+                vacio.textContent = 'No hay coincidencias.';
+                vacio.hidden = false;
+            }
+            return;
+        }
+        if (vacio) vacio.hidden = true;
+        coincidencias.forEach(function (persona) {
+            const boton = document.createElement('button');
+            boton.type = 'button';
+            const nombre = document.createElement('span');
+            nombre.className = 'nombre';
+            nombre.textContent = persona.name;
+            const correo = document.createElement('span');
+            correo.className = 'correo';
+            correo.textContent = persona.email;
+            boton.append(nombre, correo);
+            boton.addEventListener('click', function () {
+                mostrarSeleccion(persona);
+            });
+            resultados.appendChild(boton);
+        });
+        resultados.hidden = false;
     });
-});
+
+    document.getElementById('limpiar-matricula')?.addEventListener('click', function () {
+        elegido.value = '';
+        seleccion.hidden = true;
+        entrada.focus();
+    });
+
+    formulario.addEventListener('submit', function (evento) {
+        if (!elegido.value) {
+            evento.preventDefault();
+            entrada.focus();
+            if (vacio && entrada.value.trim() === '') {
+                vacio.hidden = false;
+                vacio.textContent = 'Escribe y elige una persona de la lista.';
+            }
+        }
+    });
+})();
 </script>
 <?php endif; ?>
 <?php endif; ?>
