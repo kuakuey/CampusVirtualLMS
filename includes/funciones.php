@@ -142,6 +142,7 @@ function requiere_sesion(): void
     if (usuario_debe_cambiar_clave() && $pagina !== 'cambiar-contrasena.php') {
         redirigir('cambiar-contrasena.php');
     }
+    registrar_presencia();
 }
 
 function puede_editar_usuarios(?array $usuario = null): bool
@@ -314,6 +315,20 @@ function token_csrf(): string
     return $_SESSION['token_csrf'];
 }
 
+function liberar_sesion(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+}
+
+function reabrir_sesion(): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+}
+
 function campo_csrf(): string
 {
     return '<input type="hidden" name="token_csrf" value="' . escapar(token_csrf()) . '">';
@@ -338,20 +353,38 @@ function esta_matriculado(int $idCurso, ?int $idEstudiante = null): bool
 
 function puede_acceder_curso(array $curso): bool
 {
-    $usuario = usuario_actual();
+    return acceso_curso($curso)['permitido'];
+}
+
+function acceso_curso(array $curso, ?array $usuario = null): array
+{
+    $usuario = $usuario ?? usuario_actual();
+    $denegado = [
+        'permitido' => false,
+        'es_propietario' => false,
+        'docente_modulo' => false,
+        'mostrar_progreso' => false,
+    ];
     if (!$usuario) {
-        return false;
+        return $denegado;
     }
-    if (es_admin_o_gestor($usuario)) {
-        return true;
+
+    $idCurso = (int) $curso['id'];
+    $esPropietario = es_propietario_curso($curso, $usuario);
+    $docenteModulo = !$esPropietario
+        && ($usuario['role'] ?? '') === 'teacher'
+        && es_docente_modulo_curso($idCurso, (int) $usuario['id']);
+    $matriculado = false;
+    if (($usuario['role'] ?? '') === 'student' || (!$esPropietario && !$docenteModulo)) {
+        $matriculado = esta_matriculado($idCurso, (int) $usuario['id']);
     }
-    if ($usuario['role'] === 'teacher' && (int) $curso['teacher_id'] === (int) $usuario['id']) {
-        return true;
-    }
-    if ($usuario['role'] === 'teacher' && es_docente_modulo_curso((int) $curso['id'], (int) $usuario['id'])) {
-        return true;
-    }
-    return esta_matriculado((int) $curso['id'], (int) $usuario['id']);
+
+    return [
+        'permitido' => $esPropietario || $docenteModulo || $matriculado,
+        'es_propietario' => $esPropietario,
+        'docente_modulo' => $docenteModulo,
+        'mostrar_progreso' => ($usuario['role'] ?? '') === 'student' && $matriculado,
+    ];
 }
 
 function obtener_curso(int $id): ?array
@@ -368,15 +401,19 @@ function obtener_curso(int $id): ?array
     return $curso ?: null;
 }
 
-function obtener_leccion(int $id): ?array
+function obtener_leccion(int $id, bool $incluirContenido = true): ?array
 {
+    $columnas = 'l.id, l.course_id, l.subcourse_id, l.title, l.lesson_date, l.video_url, l.attachment, l.sort_order, l.is_published';
+    if ($incluirContenido) {
+        $columnas .= ', l.content';
+    }
     $consulta = bd()->prepare(
-        'SELECT l.*, c.title AS course_title, c.teacher_id, c.id AS course_id,
+        "SELECT $columnas, c.title AS course_title, c.teacher_id,
                 s.title AS subcourse_title, s.sort_order AS subcourse_sort
          FROM lessons l
          JOIN courses c ON c.id = l.course_id
          LEFT JOIN subcourses s ON s.id = l.subcourse_id
-         WHERE l.id = ?'
+         WHERE l.id = ?"
     );
     $consulta->execute([$id]);
     $leccion = $consulta->fetch();
@@ -452,7 +489,9 @@ function obtener_docentes_activos(): array
 function obtener_lecciones_curso(int $idCurso): array
 {
     $consulta = bd()->prepare(
-        'SELECT l.*, s.title AS subcourse_title, s.sort_order AS subcourse_sort
+        'SELECT l.id, l.course_id, l.subcourse_id, l.title, l.lesson_date, l.video_url,
+                l.attachment, l.sort_order, l.is_published,
+                s.title AS subcourse_title, s.sort_order AS subcourse_sort
          FROM lessons l
          LEFT JOIN subcourses s ON s.id = l.subcourse_id
          WHERE l.course_id = ?
@@ -1018,15 +1057,15 @@ function registrar_tiempo_video_leccion(int $idLeccion, int $segundos): int
     if (!isset($_SESSION['tiempo_video_leccion'])) {
         $_SESSION['tiempo_video_leccion'] = [];
     }
-    $_SESSION['tiempo_video_leccion'][$idLeccion] = min(
-        86400,
-        obtener_tiempo_video_leccion($idLeccion) + $segundos
-    );
+    $total = min(86400, obtener_tiempo_video_leccion($idLeccion) + $segundos);
+    $_SESSION['tiempo_video_leccion'][$idLeccion] = $total;
     $usuario = usuario_actual();
-    if ($usuario && ($usuario['role'] ?? '') === 'student') {
-        persistir_tiempo_video_leccion($idLeccion, (int) $usuario['id'], $segundos);
+    $idEstudiante = ($usuario && ($usuario['role'] ?? '') === 'student') ? (int) $usuario['id'] : 0;
+    liberar_sesion();
+    if ($idEstudiante > 0) {
+        persistir_tiempo_video_leccion($idLeccion, $idEstudiante, $segundos);
     }
-    return $_SESSION['tiempo_video_leccion'][$idLeccion];
+    return $total;
 }
 
 function etiqueta_asistencia(string $estado): string

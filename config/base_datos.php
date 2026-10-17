@@ -17,6 +17,9 @@ class BaseDatos
                     PDO::ATTR_EMULATE_PREPARES => false,
                 ]);
             } catch (PDOException $e) {
+                if (function_exists('registrar_caida')) {
+                    registrar_caida('base_de_datos', $e->getMessage());
+                }
                 error_log('Error BD AulaVirtual: ' . $e->getMessage());
                 http_response_code(503);
                 die('<h1>Servicio no disponible</h1><p>No se pudo conectar a la base de datos. Verifica la configuración en <code>config/config.php</code> o usa <a href="' . URL_INSTALACION . '">instalacion.php</a>.</p>');

@@ -333,12 +333,19 @@ foreach ($lecciones as $leccion) {
     }
 }
 $idModuloActivo = (int) ($_GET['modulo'] ?? 0);
+$subcursoActivo = null;
 if ($subcursos) {
-    if ($idModuloActivo <= 0 || !obtener_subcurso($idModuloActivo, $id)) {
-        $idModuloActivo = (int) $subcursos[0]['id'];
+    foreach ($subcursos as $subcurso) {
+        if ((int) $subcurso['id'] === $idModuloActivo) {
+            $subcursoActivo = $subcurso;
+            break;
+        }
+    }
+    if (!$subcursoActivo) {
+        $subcursoActivo = $subcursos[0];
+        $idModuloActivo = (int) $subcursoActivo['id'];
     }
 }
-$subcursoActivo = $idModuloActivo ? obtener_subcurso($idModuloActivo, $id) : null;
 $leccionesModuloActivo = $mostrarSubcursos ? ($leccionesPorSubcurso[$idModuloActivo] ?? []) : $lecciones;
 $listaLeccionesVista = $mostrarSubcursos ? $leccionesModuloActivo : $lecciones;
 $idSubcursoLista = $mostrarSubcursos
@@ -349,8 +356,11 @@ if ($idSubcursoLista <= 0 && $listaLeccionesVista) {
 }
 
 $mostrarProgresoEstudiante = $usuario['role'] === 'student' && $matriculado;
-$progresoCurso = $mostrarProgresoEstudiante ? porcentaje_progreso_curso($id, (int) $usuario['id']) : 0;
 $idsLeccionesCompletadas = $mostrarProgresoEstudiante ? obtener_ids_lecciones_completadas($id, (int) $usuario['id']) : [];
+$totalLeccionesCurso = count($lecciones);
+$progresoCurso = ($mostrarProgresoEstudiante && $totalLeccionesCurso > 0)
+    ? (int) min(100, round((count($idsLeccionesCompletadas) / $totalLeccionesCurso) * 100))
+    : 0;
 
 $tareas = bd()->prepare('SELECT * FROM assignments WHERE course_id = ? ORDER BY due_date IS NULL, due_date, id');
 $tareas->execute([$id]);

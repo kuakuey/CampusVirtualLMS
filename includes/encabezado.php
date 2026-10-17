@@ -12,6 +12,9 @@ $soloCambioClave = $paginaActual === 'cambiar-contrasena.php' && usuario_debe_ca
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= escapar($tituloPagina) ?> · <?= escapar(NOMBRE_APP) ?></title>
+    <?php if (!empty($refrescoSegundos)): ?>
+    <meta http-equiv="refresh" content="<?= (int) $refrescoSegundos ?>">
+    <?php endif; ?>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="<?= URL_APP ?>/assets/css/style.css" rel="stylesheet">
@@ -55,12 +58,13 @@ $soloCambioClave = $paginaActual === 'cambiar-contrasena.php' && usuario_debe_ca
                 </li>
                 <?php if (es_admin_o_gestor($usuario)): ?>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle <?= in_array($paginaActual, ['usuarios.php','usuario.php','categorias.php'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle <?= in_array($paginaActual, ['usuarios.php','usuario.php','categorias.php','rendimiento.php'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">
                         <i class="bi bi-gear me-1"></i> Administración
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="<?= URL_USUARIOS ?>"><i class="bi bi-people me-2"></i>Usuarios</a></li>
                         <li><a class="dropdown-item" href="<?= URL_CATEGORIAS ?>"><i class="bi bi-tags me-2"></i>Categorías</a></li>
+                        <li><a class="dropdown-item" href="<?= URL_RENDIMIENTO ?>"><i class="bi bi-activity me-2"></i>Rendimiento</a></li>
                         <li><a class="dropdown-item" href="<?= URL_CURSOS ?>"><i class="bi bi-collection me-2"></i>Cursos</a></li>
                     </ul>
                 </li>

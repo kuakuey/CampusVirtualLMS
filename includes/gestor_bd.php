@@ -9,6 +9,7 @@ class GestorBd
         'users', 'categories', 'course_groups', 'courses', 'subcourses', 'enrollments', 'lessons',
         'assignments', 'submissions', 'grades',
         'forum_topics', 'forum_replies', 'lesson_completions', 'lesson_watch_progress', 'attendances',
+        'user_presence',
     ];
 
     public static function obtenerConexionServidor(): PDO

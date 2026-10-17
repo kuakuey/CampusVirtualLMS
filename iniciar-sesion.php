@@ -17,7 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($email === '' || $password === '') {
         $error = 'Completa todos los campos.';
     } else {
-        $stmt = bd()->prepare('SELECT * FROM users WHERE email = ? AND status = 1 LIMIT 1');
+        $stmt = bd()->prepare(
+            'SELECT id, name, email, password, role, avatar, bio, status, created_at, must_change_password
+             FROM users WHERE email = ? AND status = 1 LIMIT 1'
+        );
         $stmt->execute([$email]);
         $usuario = $stmt->fetch();
 

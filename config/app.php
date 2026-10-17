@@ -89,6 +89,7 @@ $rutasApp = [
     'URL_USUARIOS' => '/admin/usuarios.php',
     'URL_USUARIO' => '/admin/usuario.php',
     'URL_CATEGORIAS' => '/admin/categorias.php',
+    'URL_RENDIMIENTO' => '/admin/rendimiento.php',
 ];
 foreach ($rutasApp as $nombre => $ruta) {
     if (!defined($nombre)) {
@@ -108,6 +109,9 @@ if (is_dir($directorioLogs) && is_writable($directorioLogs)) {
 }
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
+
+require_once __DIR__ . '/../includes/monitor.php';
+iniciar_monitor();
 
 iniciar_sesion_aplicacion();
 

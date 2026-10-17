@@ -4,6 +4,73 @@ requiere_sesion();
 
 $usuario = usuario_actual();
 $id = (int) ($_GET['id'] ?? 0);
+$esAjax = $_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['ajax']);
+
+if ($esAjax) {
+    $responder = static function (array $datos): void {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode($datos);
+        exit;
+    };
+
+    $token = $_POST['token_csrf'] ?? '';
+    $tokenOk = is_string($token) && hash_equals(token_csrf(), $token);
+    $accion = $_POST['accion'] ?? '';
+    $segundosPedidos = (int) ($_POST['segundos'] ?? 0);
+    $tiempoSesion = obtener_tiempo_video_leccion($id);
+    $idEstudiante = (int) ($usuario['id'] ?? 0);
+    liberar_sesion();
+
+    if (!$tokenOk) {
+        $responder(['ok' => false, 'mensaje' => 'Token de seguridad inválido.']);
+    }
+
+    $lesson = $id ? obtener_leccion($id, false) : null;
+    if (!$lesson) {
+        $responder(['ok' => false, 'mensaje' => 'Lección no encontrada.']);
+    }
+
+    $idCurso = (int) $lesson['course_id'];
+    $acceso = acceso_curso(['id' => $idCurso, 'teacher_id' => (int) $lesson['teacher_id']], $usuario);
+    $mostrarProgreso = $acceso['mostrar_progreso'];
+    if (!$acceso['permitido']) {
+        $responder(['ok' => false, 'mensaje' => 'No tienes acceso a esta lección.']);
+    }
+
+    $tipoVideo = tipo_video_leccion($lesson['video_url'] ?? null);
+    $tiempoRequerido = segundos_requeridos_video_leccion();
+
+    if ($accion === 'registrar_tiempo_video' && $mostrarProgreso) {
+        if (leccion_esta_completada($id, $idEstudiante)) {
+            $responder(['ok' => true, 'total' => $tiempoRequerido, 'requerido' => $tiempoRequerido]);
+        }
+        if ($segundosPedidos < 1 || $segundosPedidos > 120) {
+            $responder(['ok' => true, 'total' => $tiempoSesion, 'requerido' => $tiempoRequerido]);
+        }
+        reabrir_sesion();
+        $total = registrar_tiempo_video_leccion($id, $segundosPedidos);
+        $responder(['ok' => true, 'total' => $total, 'requerido' => $tiempoRequerido]);
+    }
+
+    if ($accion === 'marcar_leccion_completada' && $mostrarProgreso) {
+        if (leccion_esta_completada($id, $idEstudiante)) {
+            $responder(['ok' => true]);
+        }
+        if (empty($lesson['video_url']) || !in_array($tipoVideo, ['youtube', 'html5'], true)) {
+            $responder(['ok' => false, 'mensaje' => 'Esta lección requiere un video compatible para marcarla como completada.']);
+        }
+        if ($tiempoSesion < $tiempoRequerido) {
+            $responder(['ok' => false, 'mensaje' => 'Debes ver el video al menos 10 minutos en esta sesión.']);
+        }
+        marcar_leccion_completada($id, $idEstudiante);
+        $responder(['ok' => true]);
+    }
+
+    $responder(['ok' => false, 'mensaje' => 'Acción no permitida.']);
+}
+
 $lesson = $id ? obtener_leccion($id) : null;
 
 if (!$lesson) {
@@ -11,66 +78,19 @@ if (!$lesson) {
     redirigir('cursos.php');
 }
 
-$curso = obtener_curso((int) $lesson['course_id']);
-if (!$curso || !puede_acceder_curso($curso)) {
+$idCurso = (int) $lesson['course_id'];
+$acceso = acceso_curso(['id' => $idCurso, 'teacher_id' => (int) $lesson['teacher_id']], $usuario);
+if (!$acceso['permitido']) {
     mensaje_flash('danger', 'No tienes acceso a esta lección.');
     redirigir('cursos.php');
 }
 
-$esPropietario = es_propietario_curso($curso, $usuario);
-$idCurso = (int) $lesson['course_id'];
-$puedeVerSeguimiento = $esPropietario
-    || ($usuario['role'] === 'teacher' && es_docente_modulo_curso($idCurso, (int) $usuario['id']));
-$mostrarProgreso = $usuario['role'] === 'student' && esta_matriculado($idCurso);
-$leccionCompletada = $mostrarProgreso && leccion_esta_completada($id, (int) $usuario['id']);
-$progresoCurso = $mostrarProgreso ? porcentaje_progreso_curso($idCurso, (int) $usuario['id']) : 0;
-$idsCompletadas = $mostrarProgreso ? obtener_ids_lecciones_completadas($idCurso, (int) $usuario['id']) : [];
+$esPropietario = $acceso['es_propietario'];
+$mostrarProgreso = $acceso['mostrar_progreso'];
+$puedeVerSeguimiento = $esPropietario || $acceso['docente_modulo'];
 $tipoVideo = tipo_video_leccion($lesson['video_url'] ?? null);
 $youtubeId = id_video_youtube($lesson['video_url'] ?? null);
 $tiempoRequerido = segundos_requeridos_video_leccion();
-$videoConSeguimiento = $mostrarProgreso && !$leccionCompletada && in_array($tipoVideo, ['youtube', 'html5'], true);
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['ajax'])) {
-    header('Content-Type: application/json; charset=utf-8');
-    $token = $_POST['token_csrf'] ?? '';
-    if (!hash_equals(token_csrf(), $token)) {
-        echo json_encode(['ok' => false, 'mensaje' => 'Token de seguridad inválido.']);
-        exit;
-    }
-
-    $accion = $_POST['accion'] ?? '';
-
-    if ($accion === 'registrar_tiempo_video' && $mostrarProgreso && !$leccionCompletada) {
-        $total = registrar_tiempo_video_leccion($id, (int) ($_POST['segundos'] ?? 0));
-        echo json_encode(['ok' => true, 'total' => $total, 'requerido' => $tiempoRequerido]);
-        exit;
-    }
-
-    if ($accion === 'marcar_leccion_completada' && $mostrarProgreso) {
-        if ($leccionCompletada) {
-            echo json_encode(['ok' => true]);
-            exit;
-        }
-        if (empty($lesson['video_url']) || !in_array($tipoVideo, ['youtube', 'html5'], true)) {
-            echo json_encode(['ok' => false, 'mensaje' => 'Esta lección requiere un video compatible para marcarla como completada.']);
-            exit;
-        }
-        if (obtener_tiempo_video_leccion($id) < $tiempoRequerido) {
-            echo json_encode(['ok' => false, 'mensaje' => 'Debes ver el video al menos 10 minutos en esta sesión.']);
-            exit;
-        }
-        marcar_leccion_completada($id, (int) $usuario['id']);
-        echo json_encode(['ok' => true]);
-        exit;
-    }
-
-    echo json_encode(['ok' => false, 'mensaje' => 'Acción no permitida.']);
-    exit;
-}
-
-if ($mostrarProgreso) {
-    reiniciar_tiempo_video_leccion($id);
-}
 
 $siblings = obtener_lecciones_curso($idCurso);
 $subcursosSidebar = obtener_subcursos_curso($idCurso);
@@ -98,12 +118,26 @@ foreach ($leccionesModuloActual as $i => $sib) {
 $urlVolverCurso = URL_APP . '/curso.php?id=' . $idCurso . '&pestaña=lecciones'
     . ($mostrarSubcursosSidebar && $idModuloLeccion > 0 ? '&modulo=' . $idModuloLeccion : '');
 
+$idsCompletadas = $mostrarProgreso ? obtener_ids_lecciones_completadas($idCurso, (int) $usuario['id']) : [];
+$totalLecciones = count($siblings);
+$leccionCompletada = $mostrarProgreso && in_array($id, $idsCompletadas, true);
+$progresoCurso = ($mostrarProgreso && $totalLecciones > 0)
+    ? (int) min(100, round((count($idsCompletadas) / $totalLecciones) * 100))
+    : 0;
+$videoConSeguimiento = $mostrarProgreso && !$leccionCompletada && in_array($tipoVideo, ['youtube', 'html5'], true);
+
+if ($videoConSeguimiento) {
+    reiniciar_tiempo_video_leccion($id);
+}
+
 $datosLeccionActual = datos_leccion_lista($lesson);
 $tituloPagina = $datosLeccionActual['titulo'];
 if ($datosLeccionActual['fecha'] !== '') {
     $tituloPagina .= ' · ' . $datosLeccionActual['fecha'];
 }
+$tokenCsrf = token_csrf();
 require_once __DIR__ . '/includes/encabezado.php';
+liberar_sesion();
 ?>
 
 <button type="button" class="lesson-sidebar-fab d-lg-none" id="btn-abrir-lecciones" aria-label="Ver lecciones del curso">
@@ -257,7 +291,7 @@ require_once __DIR__ . '/includes/encabezado.php';
                          data-youtube-id="<?= escapar($youtubeId ?? '') ?>"
                          data-requerido="<?= $tiempoRequerido ?>"
                          data-completada="0"
-                         data-csrf="<?= escapar(token_csrf()) ?>"
+                         data-csrf="<?= escapar($tokenCsrf) ?>"
                          data-url="<?= escapar(URL_APP . '/leccion.php?id=' . $id) ?>">
                         <div class="lesson-progress-row row align-items-center g-3 lesson-progress-stack">
                             <div class="col-12 col-md min-w-0">
@@ -351,7 +385,7 @@ require_once __DIR__ . '/includes/encabezado.php';
     <?php if ($tipoVideo === 'youtube'): ?>
     <script src="https://www.youtube.com/iframe_api"></script>
     <?php endif; ?>
-    <script src="<?= URL_APP ?>/assets/js/leccion-progreso.js"></script>
+    <script src="<?= URL_APP ?>/assets/js/leccion-progreso.js?v=<?= (int) filemtime(__DIR__ . '/assets/js/leccion-progreso.js') ?>"></script>
 <?php endif; ?>
 <script src="<?= URL_APP ?>/assets/js/leccion-sidebar.js"></script>
 <?php if ($mostrarSubcursosSidebar): ?>
